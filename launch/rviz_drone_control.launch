@@ -1,0 +1,7 @@
+<launch>
+    <node 
+        name="rviz_drone_control" 
+        pkg="rviz_drone_control" 
+        type="rviz_drone_control" 
+        output="screen" />
+</launch>
