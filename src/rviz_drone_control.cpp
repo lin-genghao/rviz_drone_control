@@ -53,9 +53,6 @@ namespace rviz_drone_control{
         button_layout->addLayout(uav1_layout);
         button_layout->addLayout(uav2_layout);
         
-        // 创建订阅者
-        // mavros_state_sub_ = nh_.subscribe<mavros_msgs::State>("/uav0/mavros/state", 10, &RvizDroneControl::mavrosStateCallback, this);
-        
     }
     //加载配置数据---必须要有的
     void RvizDroneControl::load(const rviz::Config &config){
@@ -117,7 +114,7 @@ namespace rviz_drone_control{
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
 
         id_string = id.toStdString();
-        // 为起飞、返航、降落创建ROS发布者
+        // 为起飞、发射、返航、降落创建ROS发布者
         takeoff_pub_ = nh_.advertise<std_msgs::Empty>(id_string + "/takeoff_topic", 1);
         launch_pub_ = nh_.advertise<std_msgs::Empty>(id_string + "/launch_topic", 1);
         return_home_pub_ = nh_.advertise<std_msgs::Empty>(id_string + "/return_home_topic", 1);
@@ -155,10 +152,6 @@ namespace rviz_drone_control{
         ROS_INFO("Takeoff button clicked.");
         takeoff_pub_.publish(empty_msg);
 
-        // 假设您已经有了服务类型定义，例如：
-        // mavros::set_mode::Request offb_set_mode;
-        // mavros::cmd::arming::Request arm_cmd;
-
         // 3. 设置飞行模式为定点模式
         if (current_state.mode != "POSCTL") {
             // 假设"AUTO.TAKEOFF"是您的起飞模式
@@ -182,9 +175,8 @@ namespace rviz_drone_control{
             }
         }
 
-        // 3. 设置飞行模式为定点模式
+        // 3. 设置飞行模式为起飞模式
         if (current_state.mode != "AUTO.TAKEOFF") {
-            // 假设"AUTO.TAKEOFF"是您的起飞模式
             offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
             if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                 ROS_INFO("TAKEOFF mode enabled");
@@ -194,8 +186,6 @@ namespace rviz_drone_control{
             }
         }
 
-        // 4. 设置起飞高度
-
     }
 
     void UavButton::launch_callback() {
@@ -203,9 +193,8 @@ namespace rviz_drone_control{
         ROS_INFO("Launch button clicked.");
         launch_pub_.publish(empty_msg);
 
-        // 3. 设置飞行模式为定点模式
+        // 3. 设置飞行模式为任务模式
         if (current_state.mode != "AUTO.MISSION") {
-            // 假设"AUTO.TAKEOFF"是您的起飞模式
             offb_set_mode.request.custom_mode = "AUTO.MISSION";
             if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                 ROS_INFO("MISSION mode enabled");
@@ -259,8 +248,6 @@ namespace rviz_drone_control{
         // 将航点添加到列表中
         waypoints.push_back(waypoint);
 
-        // 继续添加更多航点...
-
         // 调用服务以推送航点
         mavros_msgs::WaypointPush wp_push;
         wp_push.request.waypoints = waypoints;
@@ -276,9 +263,8 @@ namespace rviz_drone_control{
         std_msgs::Empty empty_msg;
         ROS_INFO("Return Home button clicked.");
         return_home_pub_.publish(empty_msg);
-        // 3. 设置飞行模式为定点模式
+        // 3. 设置飞行模式为返航模式
         if (current_state.mode != "AUTO.RTL") {
-            // 假设"AUTO.TAKEOFF"是您的起飞模式
             offb_set_mode.request.custom_mode = "AUTO.RTL";
             if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                 ROS_INFO("RTL mode enabled");
@@ -294,9 +280,8 @@ namespace rviz_drone_control{
         std_msgs::Empty empty_msg;
         ROS_INFO("Land button clicked.");
         land_pub_.publish(empty_msg);
-        // 3. 设置飞行模式为定点模式
+        // 设置飞行模式为降落模式
         if (current_state.mode != "AUTO.LAND") {
-            // 假设"AUTO.TAKEOFF"是您的起飞模式
             offb_set_mode.request.custom_mode = "AUTO.LAND";
             if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                 ROS_INFO("LAND mode enabled");
@@ -317,8 +302,7 @@ namespace rviz_drone_control{
         home_position.geo = msg->geo;
         home_position.position = msg->position;
         home_position.orientation = msg->orientation;
-        ROS_INFO("%s home lat: %f\t lon: %f\t alt: %f",id_string.c_str(), home_position.geo.latitude, home_position.geo.longitude, home_position.position.z);
-        // ROS_INFO("%s home x: %f\t y: %f\t z: %f",id_string.c_str(), home_position.position.x, home_position.position.y, home_position.position.z);
+        // ROS_INFO("%s home lat: %f\t lon: %f\t alt: %f",id_string.c_str(), home_position.geo.latitude, home_position.geo.longitude, home_position.position.z);
     }
 }
 #include <pluginlib/class_list_macros.h>
