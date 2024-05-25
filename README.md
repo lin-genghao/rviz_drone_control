@@ -20,9 +20,7 @@ roslaunch rviz_drone_control rviz_drone_control.launch
 
 # 效果展示
 
-<video id="video" controls="" preload="none" poster="封面">
-      <source id="mp4" src="rviz_drone_control/attachment/多机模式.mp4" type="video/mp4">
-</videos>
+![Video Title](attachment/多机模式.mp4)
 
 # 依赖
 
