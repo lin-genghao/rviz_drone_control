@@ -15,6 +15,7 @@
 #include <mavros_msgs/Waypoint.h>
 #include <mavros_msgs/CommandCode.h>
 #include <mavros_msgs/WaypointPush.h>
+#include <mavros_msgs/WaypointClear.h>
 #include "geometry_msgs/PoseStamped.h"
 #include "tf/transform_datatypes.h"
 

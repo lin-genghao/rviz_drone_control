@@ -191,6 +191,18 @@ namespace rviz_drone_control{
     void UavButton::launch_callback() {
         std_msgs::Empty empty_msg;
         ROS_INFO("Launch button clicked.");
+        // 定义服务响应类型
+        // 创建航点清除服务的响应对象
+        mavros_msgs::WaypointClear srv;
+
+        // 调用清除航点服务
+        if (ros::service::call(id_string + "/mavros/mission/clear", srv)) {
+            ROS_INFO("Waypoints cleared successfully before launch.");
+        } else {
+            ROS_ERROR("Failed to call clear waypoints service before launch.");
+            return; // 如果无法清除航点，则退出函数
+        }
+
         launch_pub_.publish(empty_msg);
 
         // 3. 设置飞行模式为任务模式
@@ -212,14 +224,18 @@ namespace rviz_drone_control{
         waypoint.frame = mavros_msgs::Waypoint::FRAME_GLOBAL_REL_ALT; // 例如，使用全局相对高度坐标系
         waypoint.command = mavros_msgs::CommandCode::NAV_WAYPOINT; // 航点命令为导航到指定位置
         waypoint.is_current = false;
-        waypoint.autocontinue = true; // 自动继续执行下一个航点
+        waypoint.autocontinue = false; // 自动继续执行下一个航点
         waypoint.param1 = 0.0;
         waypoint.param2 = 0.0;
         waypoint.param3 = 0.0;
         // waypoint.param4 = 90.0;
-        waypoint.x_lat = 47.3978432; // 航点的纬度
-        waypoint.y_long = 8.5456937; // 航点的经度
-        waypoint.z_alt = 10.0; // 航点的相对高度
+        // waypoint.x_lat = 23.1772242; // 航点的纬度
+        // waypoint.y_long = 112.5779558; // 航点的经度
+        waypoint.x_lat = 47.3978335; // 航点的纬度
+        waypoint.y_long = 8.5456944; // 航点的经度
+        // 23.1772605
+        // 112.5778656
+        waypoint.z_alt = 2; // 航点的相对高度
 
         // 假设 home_position 已经包含了家点的纬度和经度
         double home_lat = home_position.geo.latitude;
@@ -243,7 +259,8 @@ namespace rviz_drone_control{
         bearing = 360 - bearing;
 
         // 设置航点的航向角
-        waypoint.param4 = bearing;
+        // waypoint.param4 = bearing;
+        waypoint.param4 = NAN;
 
         // 将航点添加到列表中
         waypoints.push_back(waypoint);
