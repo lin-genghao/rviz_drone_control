@@ -123,6 +123,7 @@ namespace rviz_drone_control{
         mavros_state_sub_ = nh_.subscribe<mavros_msgs::State>(id_string + "/mavros/state", 10, &UavButton::mavrosStateCallback, this);
         mavros_home_sub_ = nh_.subscribe<mavros_msgs::HomePosition>(id_string + "/mavros/home_position/home", 10, &UavButton::mavrosHomeCallback, this);
     
+        dji_position_sub_ = nh_.subscribe<sensor_msgs::NavSatFix>("/dji/gps", 10, &UavButton::djiPositionCallBack, this);
         // 服务的客户端（设定无人机的模式、状态）
         arming_client = nh_.serviceClient<mavros_msgs::CommandBool>
                 (id_string + "/mavros/cmd/arming");
@@ -231,11 +232,13 @@ namespace rviz_drone_control{
         // waypoint.param4 = 90.0;
         // waypoint.x_lat = 23.1772242; // 航点的纬度
         // waypoint.y_long = 112.5779558; // 航点的经度
-        waypoint.x_lat = 47.3978335; // 航点的纬度
-        waypoint.y_long = 8.5456944; // 航点的经度
+        // waypoint.x_lat = 47.3978335; // 航点的纬度
+        // waypoint.y_long = 8.5456944; // 航点的经度
+        waypoint.x_lat = dji_position.latitude;
+        waypoint.y_long = dji_position.longitude;
         // 23.1772605
         // 112.5778656
-        waypoint.z_alt = 2; // 航点的相对高度
+        waypoint.z_alt = 5; // 航点的相对高度
 
         // 假设 home_position 已经包含了家点的纬度和经度
         double home_lat = home_position.geo.latitude;
@@ -320,6 +323,11 @@ namespace rviz_drone_control{
         home_position.position = msg->position;
         home_position.orientation = msg->orientation;
         // ROS_INFO("%s home lat: %f\t lon: %f\t alt: %f",id_string.c_str(), home_position.geo.latitude, home_position.geo.longitude, home_position.position.z);
+    }
+
+    void UavButton::djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg){
+        dji_position = *msg;
+        ROS_INFO("lat: %f\t lon: %f\t alt: %f", dji_position.latitude, dji_position.longitude, dji_position.altitude);
     }
 }
 #include <pluginlib/class_list_macros.h>

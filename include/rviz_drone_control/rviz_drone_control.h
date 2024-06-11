@@ -16,7 +16,8 @@
 #include <mavros_msgs/CommandCode.h>
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/WaypointClear.h>
-#include "geometry_msgs/PoseStamped.h"
+#include <geometry_msgs/PoseStamped.h>
+#include <sensor_msgs/NavSatFix.h>
 #include "tf/transform_datatypes.h"
 
 
@@ -36,6 +37,7 @@ namespace rviz_drone_control{
         void land_callback();
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
         void mavrosHomeCallback(const mavros_msgs::HomePosition::ConstPtr &msg);
+        void djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg);
 
     private:
         QPushButton *takeoff_button_;
@@ -53,6 +55,7 @@ namespace rviz_drone_control{
 
         ros::Subscriber mavros_state_sub_;
         ros::Subscriber mavros_home_sub_;
+        ros::Subscriber dji_position_sub_;
         std::string uav_id_;
         mavros_msgs::State current_state;
         mavros_msgs::HomePosition home_position;
@@ -61,6 +64,7 @@ namespace rviz_drone_control{
         mavros_msgs::CommandBool arm_cmd;
         mavros_msgs::SetMode offb_set_mode;
         std::string id_string;
+        sensor_msgs::NavSatFix dji_position;
     };
 
     class RvizDroneControl :public rviz::Panel{

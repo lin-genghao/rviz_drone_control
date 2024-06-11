@@ -9,6 +9,7 @@ mkdir ~/catkin_ws/src
 cd ~/catkin_ws/src
 git clone http://code.mmcuav.com:8003/ainav/rviz_drone_control.git
 catkin build rviz_drone_control
+rospack plugins --attrib=plugin rviz
 ```
 
 # 运行rviz_drone_control
