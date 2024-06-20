@@ -197,12 +197,12 @@ namespace rviz_drone_control{
         mavros_msgs::WaypointClear srv;
 
         // 调用清除航点服务
-        // if (ros::service::call(id_string + "/mavros/mission/clear", srv)) {
-        //     ROS_INFO("Waypoints cleared successfully before launch.");
-        // } else {
-        //     ROS_ERROR("Failed to call clear waypoints service before launch.");
-        //     return; // 如果无法清除航点，则退出函数
-        // }
+        if (ros::service::call(id_string + "/mavros/mission/clear", srv)) {
+            ROS_INFO("Waypoints cleared successfully before launch.");
+        } else {
+            ROS_ERROR("Failed to call clear waypoints service before launch.");
+            return; // 如果无法清除航点，则退出函数
+        }
 
         launch_pub_.publish(empty_msg);
 
@@ -229,46 +229,36 @@ namespace rviz_drone_control{
         waypoint.param1 = 0.0;
         waypoint.param2 = 0.0;
         waypoint.param3 = 0.0;
-        // waypoint.param4 = 90.0;
-        // waypoint.x_lat = 23.1772242; // 航点的纬度
-        // waypoint.y_long = 112.5779558; // 航点的经度
-        // waypoint.x_lat = 47.3978335; // 航点的纬度
-        // waypoint.y_long = 8.5456944; // 航点的经度
-        waypoint.x_lat = dji_position.latitude;
-        waypoint.y_long = dji_position.longitude;
-        // waypoint.x_lat = 23.1772709;
-        // waypoint.y_long = 112.5781292;
-        // 23.1772605
-        // 112.5778656
+        waypoint.param4 = NAN;
         waypoint.z_alt = 15; // 航点的相对高度
 
-        // 假设 home_position 已经包含了家点的纬度和经度
-        double home_lat = home_position.geo.latitude;
-        double home_lon = home_position.geo.longitude;
+        waypoint.x_lat = 23.1772709;
+        waypoint.y_long = 112.5781292;
+        waypoints.push_back(waypoint);
 
-        // 航点的纬度和经度
-        double wp_lat = waypoint.x_lat;
-        double wp_lon = waypoint.y_long;
+        waypoint.x_lat = 23.1772709;
+        waypoint.y_long = 112.5782292;
+        waypoints.push_back(waypoint);
 
-        // 计算航向角
-        double dLon = wp_lon - home_lon;
-        double y = sin(dLon) * cos(wp_lat);
-        double x = cos(home_lat) * sin(wp_lat) - sin(home_lat) * cos(wp_lat) * cos(dLon);
-        double bearing = atan2(y, x) * 180.0 / M_PI;
+        waypoint.x_lat = 23.1773709;
+        waypoint.y_long = 112.5782292;
+        waypoints.push_back(waypoint);
 
-        // 调整航向角范围到 0° 至 360°
-        if (bearing < 0) {
-            bearing += 360;
-        }
+        waypoint.x_lat = 23.1773709;
+        waypoint.y_long = 112.5783292;
+        waypoints.push_back(waypoint);
 
-        bearing = 360 - bearing;
+        waypoint.x_lat = 23.1774709;
+        waypoint.y_long = 112.5783292;
+        waypoints.push_back(waypoint);
 
-        // 设置航点的航向角
-        // waypoint.param4 = bearing;
-        waypoint.param4 = NAN;
+        // waypoint.x_lat = dji_position.latitude;
+        // waypoint.y_long = dji_position.longitude;
+        // waypoint.x_lat = 23.1772709;
+        // waypoint.y_long = 112.5781292;
 
         // 将航点添加到列表中
-        waypoints.push_back(waypoint);
+        // waypoints.push_back(waypoint);
 
         // 调用服务以推送航点
         mavros_msgs::WaypointPush wp_push;
