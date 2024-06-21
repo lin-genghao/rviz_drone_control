@@ -19,20 +19,38 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <sensor_msgs/NavSatFix.h>
 #include "tf/transform_datatypes.h"
+#include "rviz_drone_control/httplib.h"
+#include <iostream>
+#include <string>
+#include <vector>
 
 
 namespace rviz_drone_control{
     class UavButton :public QWidget{
         Q_OBJECT
     public:
+        struct Requst{
+            std::string host;
+            std::string uri;
+        };
+
         UavButton(ros::NodeHandle* nh, QWidget *parent = nullptr,  const QString& id = QString("uav0")); // 构造函数
         QHBoxLayout* get_layout();
         QWidget* get_button_widget();
         void set_Visible(bool visible);
 
+        Requst ParseUrl(const std::string& url);
+        int HttpPost(const std::string& url, const std::string& body, std::string& result);
+        std::string send_http_post(const std::string& url, const std::string& body);
+        int set_rect(const std::string& url, int x, int y, int width, int height); 
+        int set_obj(const std::string& url, int obj);
+        int clean_obj(const std::string& url);
+        std::string get_track_rect(const std::string& url);
+
     protected Q_SLOTS:
         void takeoff_callback();
         void launch_callback();
+        void strike_callback();
         void return_home_callback();
         void land_callback();
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
@@ -42,6 +60,7 @@ namespace rviz_drone_control{
     private:
         QPushButton *takeoff_button_;
         QPushButton *launch_button_;
+        QPushButton *strike_button_;
         QPushButton *return_home_button_;
         QPushButton *land_button_;
         QHBoxLayout *layout_; // 布局对象作为成员变量
@@ -65,6 +84,7 @@ namespace rviz_drone_control{
         mavros_msgs::SetMode offb_set_mode;
         std::string id_string;
         sensor_msgs::NavSatFix dji_position;
+
     };
 
     class RvizDroneControl :public rviz::Panel{

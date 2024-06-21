@@ -92,7 +92,8 @@ namespace rviz_drone_control{
 
         // 创建起飞、返航、降落按钮
         takeoff_button_ = new QPushButton(tr("起飞"), parent);
-        launch_button_ = new QPushButton(tr("发射"), parent);
+        launch_button_ = new QPushButton(tr("搜寻"), parent);
+        strike_button_ = new QPushButton(tr("打击"), parent);
         return_home_button_ = new QPushButton(tr("返航"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
 
@@ -100,6 +101,7 @@ namespace rviz_drone_control{
         layout_ = new QHBoxLayout;
         layout_->addWidget(takeoff_button_);
         layout_->addWidget(launch_button_);
+        layout_->addWidget(strike_button_);
         layout_->addWidget(return_home_button_);
         layout_->addWidget(land_button_);
 
@@ -110,6 +112,7 @@ namespace rviz_drone_control{
         // 连接按钮信号到槽函数
         connect(takeoff_button_, SIGNAL(clicked()), this, SLOT(takeoff_callback()));
         connect(launch_button_, SIGNAL(clicked()), this, SLOT(launch_callback()));
+        connect(strike_button_, SIGNAL(clicked()), this, SLOT(strike_callback()));
         connect(return_home_button_, SIGNAL(clicked()), this, SLOT(return_home_callback()));
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
 
@@ -291,6 +294,13 @@ namespace rviz_drone_control{
         }
     }
 
+    void UavButton::strike_callback() {
+        ROS_INFO("Strike button clicked.");
+        std::string url = "http://192.168.144.18:7080/api/set_rect";
+        // set_rect(url, 100, 100, 200, 200);
+        set_obj(url, 1);
+    }
+
     void UavButton::return_home_callback() {
         std_msgs::Empty empty_msg;
         ROS_INFO("Return Home button clicked.");
@@ -305,7 +315,6 @@ namespace rviz_drone_control{
                 return; // 如果无法设置模式，则退出函数
             }
         }
-
     }
 
     void UavButton::land_callback() {
@@ -339,7 +348,92 @@ namespace rviz_drone_control{
 
     void UavButton::djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg){
         dji_position = *msg;
-        ROS_INFO("lat: %f\t lon: %f\t alt: %f", dji_position.latitude, dji_position.longitude, dji_position.altitude);
+        // ROS_INFO("lat: %f\t lon: %f\t alt: %f", dji_position.latitude, dji_position.longitude, dji_position.altitude);
+    }
+
+    UavButton::Requst UavButton::ParseUrl(const std::string& url){
+        UavButton::Requst req;
+        int offset = 0;
+        if(url.substr(0,7) == "http://"){
+            offset = 7;
+        }else if(url.substr(0,8) == "https://"){
+            offset = 8;
+        }
+        req.host = url.substr(0, url.find_first_of("/", offset));
+        req.uri = url.substr(url.find_first_of("/", offset));
+        return req;
+    }
+
+    int UavButton::HttpPost(const std::string& url, const std::string& body, std::string& result) {
+        UavButton::Requst req = ParseUrl(url);
+        httplib::Client cli(req.host);
+
+        if (auto res = cli.Post(req.uri.c_str(), body, "application/json")) {
+            if (res->status == 200) {
+                result = res->body;
+            } else {
+                std::cout << "error status: " << res->status << std::endl;
+                if (res->body.length() > 0) {
+                    std::cout << "error body: " << res->body << std::endl;
+                }
+                return -1;
+            }
+        } else {
+            auto err = res.error();
+            // std::cout << "http error " << httplib::to_std::string(err).c_str() << std::endl;
+            return -1;
+        }
+        return 0;
+    }
+
+    std::string UavButton::send_http_post(const std::string& url, const std::string& body) {
+        std::string result;
+        if (HttpPost(url, body, result) != 0) {
+            return "";
+        }
+        return result;
+    }
+
+    // {"x": 100, "y": 100, "width": 200, "height": 200}
+    int UavButton::set_rect(const std::string& url, int x, int y, int width, int height) {
+        std::string body = "{\"x\": " + std::to_string(x) + ", \"y\": " + std::to_string(y) + ", \"width\": " + std::to_string(width) + ", \"height\": " + std::to_string(height) + "}";
+        std::string result = send_http_post(url, body);
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    // {"obj": 1}
+    int UavButton::set_obj(const std::string& url, int obj) {
+        std::string body = "{\"id\": " + std::to_string(obj) + "}";
+        std::string result = send_http_post(url, body);
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    int UavButton::clean_obj(const std::string& url) {
+        std::string body = "";
+        std::string result = send_http_post(url, body);
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    // {"x": 100, "y": 100, "width": 200, "height": 200}
+    std::string UavButton::get_track_rect(const std::string& url) {
+        std::string body = "";
+        std::string result = send_http_post(url, body);
+        return result;
     }
 }
 #include <pluginlib/class_list_macros.h>

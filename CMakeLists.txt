@@ -48,6 +48,6 @@ add_definitions(-DQT_NO_KEYWORDS)
 # add_dependencies(uav_button ${catkin_EXPORTED_TARGETS})
 # target_link_libraries(uav_button ${QT_LIBRARIES} ${catkin_LIBRARIES})
 
-add_library(rviz_drone_control src/rviz_drone_control.cpp include/rviz_drone_control/rviz_drone_control.h)
+add_library(rviz_drone_control src/rviz_drone_control.cpp include/rviz_drone_control/rviz_drone_control.h include/rviz_drone_control/httplib.h)
 add_dependencies(rviz_drone_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 target_link_libraries(rviz_drone_control ${QT_LIBRARIES} ${catkin_LIBRARIES})
