@@ -206,17 +206,6 @@ namespace rviz_drone_control{
 
         launch_pub_.publish(empty_msg);
 
-        // 3. 设置飞行模式为任务模式
-        if (current_state.mode != "AUTO.MISSION") {
-            offb_set_mode.request.custom_mode = "AUTO.MISSION";
-            if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                ROS_INFO("MISSION mode enabled");
-            } else {
-                ROS_ERROR("Failed to set MISSION mode");
-                return; // 如果无法设置模式，则退出函数
-            }
-        }
-
         // 创建航点列表
         std::vector<mavros_msgs::Waypoint> waypoints;
 
@@ -232,24 +221,44 @@ namespace rviz_drone_control{
         waypoint.param4 = NAN;
         waypoint.z_alt = 15; // 航点的相对高度
 
-        waypoint.x_lat = 23.1772709;
-        waypoint.y_long = 112.5781292;
+        // waypoint.x_lat = 23.1771954;
+        // waypoint.y_long = 112.5778758;
+        // waypoints.push_back(waypoint);
+
+        // waypoint.x_lat = 23.1770976;
+        // waypoint.y_long = 112.5782201;
+        // waypoints.push_back(waypoint);
+
+        // waypoint.x_lat = 23.1777657;
+        // waypoint.y_long = 112.5783523;
+        // waypoints.push_back(waypoint);
+
+        // waypoint.x_lat = 23.1778295;
+        // waypoint.y_long = 112.5782005;
+        // waypoints.push_back(waypoint);
+
+        // waypoint.x_lat = 23.1774136;
+        // waypoint.y_long = 112.5781111;
+        // waypoints.push_back(waypoint);
+
+        waypoint.x_lat = 23.1967469;
+        waypoint.y_long = 112.5821592;
         waypoints.push_back(waypoint);
 
-        waypoint.x_lat = 23.1772709;
-        waypoint.y_long = 112.5782292;
+        waypoint.x_lat = 23.1963283;
+        waypoint.y_long = 112.5829652;
         waypoints.push_back(waypoint);
 
-        waypoint.x_lat = 23.1773709;
-        waypoint.y_long = 112.5782292;
+        waypoint.x_lat = 23.1970022;
+        waypoint.y_long = 112.5834441;
         waypoints.push_back(waypoint);
 
-        waypoint.x_lat = 23.1773709;
-        waypoint.y_long = 112.5783292;
+        waypoint.x_lat = 23.1974289;
+        waypoint.y_long = 112.5827578;
         waypoints.push_back(waypoint);
 
-        waypoint.x_lat = 23.1774709;
-        waypoint.y_long = 112.5783292;
+        waypoint.x_lat = 23.1968588;
+        waypoint.y_long = 112.5825387;
         waypoints.push_back(waypoint);
 
         // waypoint.x_lat = dji_position.latitude;
@@ -268,6 +277,17 @@ namespace rviz_drone_control{
             ROS_INFO("Waypoints pushed successfully.");
         } else {
             ROS_ERROR("Failed to push waypoints.");
+        }
+
+            // 3. 设置飞行模式为任务模式
+        if (current_state.mode != "AUTO.MISSION") {
+            offb_set_mode.request.custom_mode = "AUTO.MISSION";
+            if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                ROS_INFO("MISSION mode enabled");
+            } else {
+                ROS_ERROR("Failed to set MISSION mode");
+                return; // 如果无法设置模式，则退出函数
+            }
         }
     }
 
