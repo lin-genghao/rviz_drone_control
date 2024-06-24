@@ -3,8 +3,10 @@
 #include <ros/ros.h>
 #include <rviz/panel.h>
 #include <QGroupBox>
+#include <QLineEdit>
 #include <QHBoxLayout>
 #include <QPushButton>
+#include <QMessageBox>
 #include <QString>
 #include <std_msgs/Empty.h>
 #include <std_msgs/String.h>
@@ -17,6 +19,7 @@
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/WaypointClear.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/NavSatFix.h>
 #include "tf/transform_datatypes.h"
 #include "rviz_drone_control/httplib.h"
@@ -56,10 +59,12 @@ namespace rviz_drone_control{
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
         void mavrosHomeCallback(const mavros_msgs::HomePosition::ConstPtr &msg);
         void djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg);
+        void boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg);
 
     private:
         QPushButton *takeoff_button_;
         QPushButton *launch_button_;
+        QLineEdit *int_input_edit_;
         QPushButton *strike_button_;
         QPushButton *return_home_button_;
         QPushButton *land_button_;
@@ -84,6 +89,8 @@ namespace rviz_drone_control{
         mavros_msgs::SetMode offb_set_mode;
         std::string id_string;
         sensor_msgs::NavSatFix dji_position;
+
+        ros::Subscriber box_select_sub_;
 
     };
 

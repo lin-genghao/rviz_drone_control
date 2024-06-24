@@ -93,6 +93,8 @@ namespace rviz_drone_control{
         // 创建起飞、返航、降落按钮
         takeoff_button_ = new QPushButton(tr("起飞"), parent);
         launch_button_ = new QPushButton(tr("搜寻"), parent);
+        int_input_edit_ = new QLineEdit(parent);
+        int_input_edit_->setText("1");
         strike_button_ = new QPushButton(tr("打击"), parent);
         return_home_button_ = new QPushButton(tr("返航"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
@@ -101,6 +103,7 @@ namespace rviz_drone_control{
         layout_ = new QHBoxLayout;
         layout_->addWidget(takeoff_button_);
         layout_->addWidget(launch_button_);
+        layout_->addWidget(int_input_edit_);
         layout_->addWidget(strike_button_);
         layout_->addWidget(return_home_button_);
         layout_->addWidget(land_button_);
@@ -125,8 +128,11 @@ namespace rviz_drone_control{
 
         mavros_state_sub_ = nh_.subscribe<mavros_msgs::State>(id_string + "/mavros/state", 10, &UavButton::mavrosStateCallback, this);
         mavros_home_sub_ = nh_.subscribe<mavros_msgs::HomePosition>(id_string + "/mavros/home_position/home", 10, &UavButton::mavrosHomeCallback, this);
-    
+
         dji_position_sub_ = nh_.subscribe<sensor_msgs::NavSatFix>("/dji/gps", 10, &UavButton::djiPositionCallBack, this);
+
+        box_select_sub_ = nh_.subscribe<geometry_msgs::PoseArray>(id_string + "/box_select", 10, &UavButton::boxSelectCallback, this);
+
         // 服务的客户端（设定无人机的模式、状态）
         arming_client = nh_.serviceClient<mavros_msgs::CommandBool>
                 (id_string + "/mavros/cmd/arming");
@@ -296,9 +302,25 @@ namespace rviz_drone_control{
 
     void UavButton::strike_callback() {
         ROS_INFO("Strike button clicked.");
+        // 获取文本框的输入内容
+        QString inputText = int_input_edit_->text();
+
+        // 尝试将输入内容转换为整数
+        bool ok;
+        int inputValue = inputText.toInt(&ok);
+
+        if (ok) {
+            // 输入有效，打印整数值
+            std::cout << "User input value: " << inputValue << std::endl;
+
+            // 这里可以添加其他处理用户输入的代码...
+        } else {
+            // 输入无效，弹出提示信息
+            QMessageBox::warning(this, "Input Error", "Please enter a valid integer.");
+        }
         std::string url = "http://192.168.144.18:7080/api/set_rect";
         // set_rect(url, 100, 100, 200, 200);
-        set_obj(url, 1);
+        set_obj(url, inputValue);
     }
 
     void UavButton::return_home_callback() {
@@ -349,6 +371,32 @@ namespace rviz_drone_control{
     void UavButton::djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg){
         dji_position = *msg;
         // ROS_INFO("lat: %f\t lon: %f\t alt: %f", dji_position.latitude, dji_position.longitude, dji_position.altitude);
+    }
+
+    void UavButton::boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg){
+        if (msg->poses.size() >= 2) {
+            std::string url = "http://192.168.144.18:7080/api/set_rect";
+
+            // 假设第一个和最后一个Pose定义了选择区域的对角线
+            geometry_msgs::Pose pose1 = msg->poses[0];
+            geometry_msgs::Pose pose2 = msg->poses.back();
+
+            std::cout << "pose1 x: "<< pose1.position.x << "  y: " << pose1.position.y << "  pose2 x: "<< pose2.position.x << "  y: " << pose2.position.y << std::endl;
+            // std::cout << "pose2 x: "<< pose2.position.x << "  y: " << pose2.position.y << std::endl;
+            // 提取位置信息
+            double x1 = pose1.position.x;
+            double y1 = pose1.position.y;
+            double x2 = pose2.position.x;
+            double y2 = pose2.position.y;
+
+            // // 计算选择区域的宽度和高度
+            int width = std::abs(x2 - x1);
+            int height = std::abs(y2 - y1);
+            std::cout << "width : "<< width << "  height: " << height << std::endl;
+
+            // // 调用set_rect函数，这里假设UavButton对象的指针或引用可用
+            set_rect(url, x1, y1, width, height);
+        }
     }
 
     UavButton::Requst UavButton::ParseUrl(const std::string& url){
