@@ -4,6 +4,8 @@
 namespace rviz_drone_control{
     RvizDroneControl::RvizDroneControl(QWidget *parent):Panel(parent)
     {
+        manual_control_sub_ = nh_.subscribe<mavros_msgs::ManualControl>("/manual_control", 1, &RvizDroneControl::manual_control_callback, this);
+
     	//创建两个按钮---测试按钮和测试按钮2
         auto *button_layout = new QVBoxLayout;
 
@@ -48,10 +50,157 @@ namespace rviz_drone_control{
         uav1_layout->addWidget(uav1_widget);
         uav2_layout->addWidget(uav2_widget);
 
+        // 创建无人机选择框并初始化
+        uav_combo_box_ = new QComboBox(this);
+        uav_combo_box_->addItem("None");
+        uav_combo_box_->addItem("UAV 1");
+        uav_combo_box_->addItem("UAV 2");
+        uav_combo_box_->addItem("UAV 3");
+
+        // 将无人机选择框添加到主布局
+        button_layout->addWidget(uav_combo_box_);
+
+        uav_select_ = "/uav";
+        initManualControlPublisher();
+
+        // 连接选择框的信号到槽函数
+        connect(uav_combo_box_, SIGNAL(currentIndexChanged(int)), this, SLOT(uavSelected_callback(int)));
+
         // 将垂直布局添加到主布局中
         button_layout->addLayout(uav0_layout);
         button_layout->addLayout(uav1_layout);
         button_layout->addLayout(uav2_layout);
+
+        auto* button_move = new QHBoxLayout;
+
+        // 创建用于放置菱形按钮的布局
+        auto *diamond_layout = new QVBoxLayout;
+
+        // 菱形的上、下按钮
+        auto *top_layout = new QHBoxLayout;
+        QPushButton *up_button = new QPushButton(tr("Up"), this);
+        top_layout->addStretch(1); // 左侧添加伸展空间
+        top_layout->addWidget(up_button);
+        top_layout->addStretch(1); // 左侧添加伸展空间
+        diamond_layout->addLayout(top_layout);
+
+        // 菱形的左侧、右侧按钮
+        auto *turn_left_right_layout = new QHBoxLayout;
+        QPushButton *turn_left_button = new QPushButton(tr("Turn Left"), this);
+        QPushButton *turn_right_button = new QPushButton(tr("Turn Right"), this);
+        turn_left_right_layout->addStretch(1); // 右侧添加伸展空间
+        turn_left_right_layout->addWidget(turn_left_button);
+        turn_left_right_layout->addStretch(1); // 右侧添加伸展空间
+        turn_left_right_layout->addWidget(turn_right_button);
+        turn_left_right_layout->addStretch(1); // 右侧添加伸展空间
+        diamond_layout->addLayout(turn_left_right_layout);
+
+        auto *bottom_layout = new QHBoxLayout;
+        QPushButton *down_button = new QPushButton(tr("Down"), this);
+        bottom_layout->addStretch(1); // 左侧添加伸展空间
+        bottom_layout->addWidget(down_button);
+        bottom_layout->addStretch(1); // 左侧添加伸展空间
+        diamond_layout->addLayout(bottom_layout);
+
+        // 创建用于放置菱形按钮的布局
+        auto *diamond_layout_2 = new QVBoxLayout;
+
+        // 菱形的上、下按钮
+        auto *front_layout = new QHBoxLayout;
+        QPushButton *front_button = new QPushButton(tr("Front"), this);
+        front_layout->addStretch(1); // 左侧添加伸展空间
+        front_layout->addWidget(front_button);
+        front_layout->addStretch(1); // 左侧添加伸展空间
+        diamond_layout_2->addLayout(front_layout);
+
+        // 菱形的左侧、右侧按钮
+        auto *left_right_layout = new QHBoxLayout;
+        QPushButton *left_button = new QPushButton(tr("Left"), this);
+        QPushButton *right_button = new QPushButton(tr("Right"), this);
+        left_right_layout->addStretch(1); // 右侧添加伸展空间
+        left_right_layout->addWidget(left_button);
+        left_right_layout->addStretch(1); // 右侧添加伸展空间
+        left_right_layout->addWidget(right_button);
+        left_right_layout->addStretch(1); // 右侧添加伸展空间
+        diamond_layout_2->addLayout(left_right_layout);
+
+        auto *back_layout = new QHBoxLayout;
+        QPushButton *back_button = new QPushButton(tr("Back"), this);
+        back_layout->addStretch(1); // 左侧添加伸展空间
+        back_layout->addWidget(back_button);
+        back_layout->addStretch(1); // 左侧添加伸展空间
+        diamond_layout_2->addLayout(back_layout);
+
+        // 将菱形布局添加到主布局中
+        button_move->addLayout(diamond_layout);
+        button_move->addLayout(diamond_layout_2);
+        button_layout->addLayout(button_move);
+        
+        connect(up_button,SIGNAL(clicked()),this,SLOT(up_callback()));
+        connect(turn_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
+        connect(turn_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
+        connect(down_button,SIGNAL(clicked()),this,SLOT(down_callback()));
+        connect(front_button,SIGNAL(clicked()),this,SLOT(front_callback()));
+        connect(left_button,SIGNAL(clicked()),this,SLOT(left_callback()));
+        connect(right_button,SIGNAL(clicked()),this,SLOT(right_callback()));
+
+    }
+    void RvizDroneControl::up_callback() {
+        ROS_INFO("up");
+    }
+    void RvizDroneControl::turn_left_callback() {
+        ROS_INFO("left");
+    }
+    void RvizDroneControl::turn_right_callback() {
+
+    }
+    void RvizDroneControl::down_callback() {
+
+    }
+    void RvizDroneControl::front_callback() {
+
+    }
+    void RvizDroneControl::left_callback() {
+
+    }
+    void RvizDroneControl::right_callback() {
+
+    }
+    void RvizDroneControl::back_callback() {
+
+    }
+    void RvizDroneControl::initManualControlPublisher() {
+        // 根据当前的uav_select_创建或重新初始化发布者
+        std::string topic_name = uav_select_ + "/mavros/manual_control/send";
+        mavros_manual_control_pub_ = nh_.advertise<mavros_msgs::ManualControl>(topic_name, 10);
+    }
+    void RvizDroneControl::uavSelected_callback(int index) {
+        // 根据选择框的索引选择相应的UavButton
+        switch(index) {
+            case 0:
+                ROS_INFO("None");
+                uav_select_ = "/uav";
+                break;
+            case 1:
+                ROS_INFO("uav 1");
+                uav_select_ = "/uav1";
+                break;
+            case 2:
+                ROS_INFO("uav 2");
+                uav_select_ = "/uav2";
+                break;
+            case 3:
+                ROS_INFO("uav 3");
+                uav_select_ = "/uav3";
+                break;
+        }
+        initManualControlPublisher();
+    }
+    
+    void RvizDroneControl::manual_control_callback(const mavros_msgs::ManualControl::ConstPtr &msg){
+        mavros_msgs::ManualControl manual_control_msg_pub = *msg;
+        mavros_manual_control_pub_.publish(manual_control_msg_pub);
+        // ROS_INFO("--------manual_control %s", uav_select_.c_str());
         
     }
     //加载配置数据---必须要有的

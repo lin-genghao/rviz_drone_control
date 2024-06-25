@@ -8,6 +8,8 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include <QString>
+#include <QComboBox>
+#include <QObject>
 #include <std_msgs/Empty.h>
 #include <std_msgs/String.h>
 #include <mavros_msgs/State.h> // 假设消息类型为mavros_msgs/State
@@ -18,6 +20,7 @@
 #include <mavros_msgs/CommandCode.h>
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/WaypointClear.h>
+#include <mavros_msgs/ManualControl.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/NavSatFix.h>
@@ -94,7 +97,7 @@ namespace rviz_drone_control{
 
     };
 
-    class RvizDroneControl :public rviz::Panel{
+    class RVIZ_EXPORT RvizDroneControl :public rviz::Panel  {
     Q_OBJECT
     public:
         RvizDroneControl(QWidget *parent = 0);
@@ -103,20 +106,35 @@ namespace rviz_drone_control{
     protected Q_SLOTS:
         void test_callback();
         void test2_callback();
+        void up_callback();
+        void turn_left_callback();
+        void turn_right_callback();
+        void down_callback();
+        void front_callback();
+        void left_callback();
+        void right_callback();
+        void back_callback();
+        void initManualControlPublisher();
+        void uavSelected_callback(int index); // 无人机选择框的槽函数
+        void manual_control_callback(const mavros_msgs::ManualControl::ConstPtr &msg); // 无人机选择框的槽函数
         // void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
     private:
         ros::NodeHandle nh_;
         QPushButton *test_button_;
         QPushButton *test2_button_;
         ros::Publisher test_pub_, test2_pub_;
+        ros::Publisher mavros_manual_control_pub_;
         ros::Subscriber mavros_state_sub_;
+        ros::Subscriber manual_control_sub_;
         bool uav1_connected = false;
         bool uav2_connected = false;
 
         UavButton *uav0_buttons_;
         UavButton *uav1_buttons_;
         UavButton *uav2_buttons_;
+        QComboBox *uav_combo_box_; // 新增的无人机选择框
 
+        std::string uav_select_;
     };
 }
 
