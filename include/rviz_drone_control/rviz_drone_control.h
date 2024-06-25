@@ -21,6 +21,10 @@
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/WaypointClear.h>
 #include <mavros_msgs/ManualControl.h>
+#include <mavros_msgs/ParamGet.h>
+#include <mavros_msgs/ParamSet.h>
+#include <mavros_msgs/ParamPull.h>
+#include <mavros_msgs/ParamPush.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <sensor_msgs/NavSatFix.h>
@@ -53,6 +57,9 @@ namespace rviz_drone_control{
         int clean_obj(const std::string& url);
         std::string get_track_rect(const std::string& url);
 
+        double paramGet(std::string param_str);
+        double paramSet(std::string param_str, double vaule);
+
     protected Q_SLOTS:
         void takeoff_callback();
         void launch_callback();
@@ -66,9 +73,12 @@ namespace rviz_drone_control{
 
     private:
         QPushButton *takeoff_button_;
+        QLineEdit *mission_alt_edit_;
+        double mission_alt_;
         QPushButton *launch_button_;
-        QLineEdit *int_input_edit_;
+        QLineEdit *strike_id_edit_;
         QPushButton *strike_button_;
+        QLineEdit *return_home_edit_;
         QPushButton *return_home_button_;
         QPushButton *land_button_;
         QHBoxLayout *layout_; // 布局对象作为成员变量
@@ -80,6 +90,14 @@ namespace rviz_drone_control{
         ros::Publisher return_home_pub_;
         ros::Publisher land_pub_;
 
+        bool takeoff_en_ = false;
+        bool launch_en_ = false;
+        bool strike_en_ = false;
+        bool return_home_en_ = false;
+        bool land_en_ = false;
+
+        double return_home_alt_;
+
         ros::Subscriber mavros_state_sub_;
         ros::Subscriber mavros_home_sub_;
         ros::Subscriber dji_position_sub_;
@@ -88,6 +106,10 @@ namespace rviz_drone_control{
         mavros_msgs::HomePosition home_position;
         ros::ServiceClient arming_client;
         ros::ServiceClient set_mode_client;
+        ros::ServiceClient param_get_client_;
+        ros::ServiceClient param_set_client_;
+        ros::ServiceClient param_pull_client_;
+        ros::ServiceClient param_push_client_;
         mavros_msgs::CommandBool arm_cmd;
         mavros_msgs::SetMode offb_set_mode;
         std::string id_string;
