@@ -27,28 +27,36 @@
 #include <mavros_msgs/ParamPush.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/Twist.h>
+#include <geometry_msgs/TwistStamped.h>
 #include <sensor_msgs/NavSatFix.h>
 #include "tf/transform_datatypes.h"
 #include "rviz_drone_control/httplib.h"
 #include <iostream>
 #include <string>
 #include <vector>
+#include <QProcess>
+#include <QThread>
 
 
 namespace rviz_drone_control{
-    class UavButton :public QWidget{
-        Q_OBJECT
+    class BackgroundWorker : public QThread{
     public:
         struct Requst{
             std::string host;
             std::string uri;
         };
 
-        UavButton(ros::NodeHandle* nh, QWidget *parent = nullptr,  const QString& id = QString("uav0")); // 构造函数
-        QHBoxLayout* get_layout();
-        QWidget* get_button_widget();
-        void set_Visible(bool visible);
+        BackgroundWorker();
+        void run();
 
+        void set_url_param(std::string& url);
+        void set_obj_param(const std::string& url, int id);
+        void set_rect_param(const std::string& url, int x, int y, int width, int height);
+        void set_cloud_pitch_param(int pitch);
+        void set_obj_en();
+        void set_rect_en();
+        void set_pitch_en();
         Requst ParseUrl(const std::string& url);
         int HttpPost(const std::string& url, const std::string& body, std::string& result);
         std::string send_http_post(const std::string& url, const std::string& body);
@@ -56,6 +64,27 @@ namespace rviz_drone_control{
         int set_obj(const std::string& url, int obj);
         int clean_obj(const std::string& url);
         std::string get_track_rect(const std::string& url);
+        int set_cloud_pitch(int pitch);
+
+    private:
+        std::string url_;
+        int id_;
+        int x_, y_, width_, height_;
+        bool set_obj_en_;
+        bool set_rect_en_;
+        bool set_pitch_en_;
+
+        int strike_flag_;
+
+    };
+
+    class UavButton :public QWidget{
+        Q_OBJECT
+    public:
+        UavButton(ros::NodeHandle* nh, QWidget *parent = nullptr,  const QString& id = QString("uav0")); // 构造函数
+        QHBoxLayout* get_layout();
+        QWidget* get_button_widget();
+        void set_Visible(bool visible);
 
         double paramGet(std::string param_str);
         double paramSet(std::string param_str, double vaule);
@@ -68,10 +97,13 @@ namespace rviz_drone_control{
         void land_callback();
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
         void mavrosHomeCallback(const mavros_msgs::HomePosition::ConstPtr &msg);
+        void LocalPoseCallBack(const geometry_msgs::PoseStamped::ConstPtr &msg);
         void djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg);
         void boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg);
 
     private:
+        BackgroundWorker* threads;
+
         QPushButton *takeoff_button_;
         QLineEdit *mission_alt_edit_;
         double mission_alt_;
@@ -95,15 +127,21 @@ namespace rviz_drone_control{
         bool strike_en_ = false;
         bool return_home_en_ = false;
         bool land_en_ = false;
+        
+        int waypoints_flag;
 
         double return_home_alt_;
+        int strike_id_;
+        std::string url;
 
         ros::Subscriber mavros_state_sub_;
         ros::Subscriber mavros_home_sub_;
         ros::Subscriber dji_position_sub_;
+
         std::string uav_id_;
         mavros_msgs::State current_state;
         mavros_msgs::HomePosition home_position;
+        geometry_msgs::TwistStamped current_velocity;
         ros::ServiceClient arming_client;
         ros::ServiceClient set_mode_client;
         ros::ServiceClient param_get_client_;
@@ -144,10 +182,15 @@ namespace rviz_drone_control{
         ros::NodeHandle nh_;
         QPushButton *test_button_;
         QPushButton *test2_button_;
+        
         ros::Publisher test_pub_, test2_pub_;
         ros::Publisher mavros_manual_control_pub_;
         ros::Subscriber mavros_state_sub_;
         ros::Subscriber manual_control_sub_;
+        ros::Subscriber local_pos_sub;
+        ros::Subscriber body_velocity_sub;
+        ros::Publisher vec_pub;
+
         bool uav1_connected = false;
         bool uav2_connected = false;
 

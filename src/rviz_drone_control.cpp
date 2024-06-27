@@ -5,6 +5,10 @@ namespace rviz_drone_control{
     RvizDroneControl::RvizDroneControl(QWidget *parent):Panel(parent)
     {
         manual_control_sub_ = nh_.subscribe<mavros_msgs::ManualControl>("/manual_control", 1, &RvizDroneControl::manual_control_callback, this);
+        
+        // body_velocity_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &RvizDroneControl::LocalPoseCallBack, this);
+
+        // vec_pub = nh_.advertise<geometry_msgs::Twist>("/mavros/setpoint_velocity/cmd_vel_unstamped", 10);
 
     	//创建两个按钮---测试按钮和测试按钮2
         auto *button_layout = new QVBoxLayout;
@@ -293,12 +297,16 @@ namespace rviz_drone_control{
         return_home_en_ = false;
         land_en_ = false;
         
+        waypoints_flag = 0;
+
         mavros_state_sub_ = nh_.subscribe<mavros_msgs::State>(id_string + "/mavros/state", 10, &UavButton::mavrosStateCallback, this);
         mavros_home_sub_ = nh_.subscribe<mavros_msgs::HomePosition>(id_string + "/mavros/home_position/home", 10, &UavButton::mavrosHomeCallback, this);
 
         dji_position_sub_ = nh_.subscribe<sensor_msgs::NavSatFix>("/dji/gps", 10, &UavButton::djiPositionCallBack, this);
 
         box_select_sub_ = nh_.subscribe<geometry_msgs::PoseArray>(id_string + "/box_select", 10, &UavButton::boxSelectCallback, this);
+
+        // local_pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &UavButton::LocalPoseCallBack, this);
 
         // 服务的客户端（设定无人机的模式、状态）
         arming_client = nh_.serviceClient<mavros_msgs::CommandBool>(id_string + "/mavros/cmd/arming");
@@ -308,10 +316,12 @@ namespace rviz_drone_control{
         param_pull_client_ = nh_.serviceClient<mavros_msgs::ParamPull>(id_string + "/mavros/param/pull");
         param_push_client_ = nh_.serviceClient<mavros_msgs::ParamPush>(id_string + "/mavros/param/push");
 
-
         offb_set_mode.request.custom_mode = "POSCTL";
 
         arm_cmd.request.value = true;
+
+        threads = new BackgroundWorker();
+        threads->start();
     }
 
     // 返回包含按钮的QWidget对象
@@ -364,20 +374,21 @@ namespace rviz_drone_control{
 
         // 尝试将输入内容转换为整数
         bool ok;
-        int inputValue = inputText.toInt(&ok);
+        strike_id_ = inputText.toInt(&ok);
 
         if (ok) {
             // 输入有效，打印整数值
-            std::cout << "User input value: " << inputValue << std::endl;
-
+            std::cout << "User input value: " << strike_id_ << std::endl;
+            strike_en_ = true;
             // 这里可以添加其他处理用户输入的代码...
         } else {
             // 输入无效，弹出提示信息
             QMessageBox::warning(this, "Input Error", "Please enter a valid integer.");
         }
-        std::string url = "http://192.168.144.18:7080/api/set_rect";
+        url = "http://192.168.144.18:7080/api/set_obj";
+        threads->set_obj_param(url, strike_id_);
+        threads->set_obj_en();
         // set_rect(url, 100, 100, 200, 200);
-        set_obj(url, inputValue);
     }
 
     void UavButton::return_home_callback() {
@@ -518,99 +529,133 @@ namespace rviz_drone_control{
             // 创建航点清除服务的响应对象
             mavros_msgs::WaypointClear srv;
 
-            // 调用清除航点服务
-            if (ros::service::call(id_string + "/mavros/mission/clear", srv)) {
-                ROS_INFO("Waypoints cleared successfully before launch.");
-            } else {
-                ROS_ERROR("Failed to call clear waypoints service before launch.");
-                return; // 如果无法清除航点，则退出函数
-            }
+            if(waypoints_flag == 0) {
+                // 调用清除航点服务
+                if (ros::service::call(id_string + "/mavros/mission/clear", srv)) {
+                    waypoints_flag = 1;
+                    ROS_INFO("Waypoints cleared successfully before launch.");
 
-            // 创建航点列表
-            std::vector<mavros_msgs::Waypoint> waypoints;
-
-            // 创建一个航点并设置其参数
-            mavros_msgs::Waypoint waypoint;
-            waypoint.frame = mavros_msgs::Waypoint::FRAME_GLOBAL_REL_ALT; // 例如，使用全局相对高度坐标系
-            waypoint.command = mavros_msgs::CommandCode::NAV_WAYPOINT; // 航点命令为导航到指定位置
-            waypoint.is_current = false;
-            waypoint.autocontinue = true; // 自动继续执行下一个航点
-            waypoint.param1 = 0.0;
-            waypoint.param2 = 0.0;
-            waypoint.param3 = 0.0;
-            waypoint.param4 = NAN;
-
-            if(mission_alt_ > 50.0) mission_alt_=50.0;
-            if(mission_alt_ < 0) mission_alt_=0;
-            waypoint.z_alt = mission_alt_; // 航点的相对高度
-
-            waypoint.x_lat = 23.1771954;
-            waypoint.y_long = 112.5778758;
-            waypoints.push_back(waypoint);
-
-            waypoint.x_lat = 23.1770976;
-            waypoint.y_long = 112.5782201;
-            waypoints.push_back(waypoint);
-
-            waypoint.x_lat = 23.1777657;
-            waypoint.y_long = 112.5783523;
-            waypoints.push_back(waypoint);
-
-            waypoint.x_lat = 23.1778295;
-            waypoint.y_long = 112.5782005;
-            waypoints.push_back(waypoint);
-
-            waypoint.x_lat = 23.1774136;
-            waypoint.y_long = 112.5781111;
-            waypoints.push_back(waypoint);
-
-            // waypoint.x_lat = 23.1967469;
-            // waypoint.y_long = 112.5821592;
-            // waypoints.push_back(waypoint);
-
-            // waypoint.x_lat = 23.1963283;
-            // waypoint.y_long = 112.5829652;
-            // waypoints.push_back(waypoint);
-
-            // waypoint.x_lat = 23.1970022;
-            // waypoint.y_long = 112.5834441;
-            // waypoints.push_back(waypoint);
-
-            // waypoint.x_lat = 23.1974289;
-            // waypoint.y_long = 112.5827578;
-            // waypoints.push_back(waypoint);
-
-            // waypoint.x_lat = 23.1968588;
-            // waypoint.y_long = 112.5825387;
-            // waypoints.push_back(waypoint);
-
-            // waypoint.x_lat = dji_position.latitude;
-            // waypoint.y_long = dji_position.longitude;
-            // waypoint.x_lat = 23.1772709;
-            // waypoint.y_long = 112.5781292;
-
-            // 将航点添加到列表中
-            // waypoints.push_back(waypoint);
-
-            // 调用服务以推送航点
-            mavros_msgs::WaypointPush wp_push;
-            wp_push.request.waypoints = waypoints;
-
-            if (ros::service::call(id_string + "/mavros/mission/push", wp_push)) {
-                launch_en_ = false;
-                ROS_INFO("Waypoints pushed successfully.");
-            } else {
-                ROS_ERROR("Failed to push waypoints.");
-            }
-
-                // 3. 设置飞行模式为任务模式
-            if (current_state.mode != "AUTO.MISSION") {
-                offb_set_mode.request.custom_mode = "AUTO.MISSION";
-                if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                    ROS_INFO("MISSION mode enabled");
                 } else {
-                    ROS_ERROR("Failed to set MISSION mode");
-                    return; // 如果无法设置模式，则退出函数
+                    ROS_ERROR("Failed to call clear waypoints service before launch.");
+                    return; // 如果无法清除航点，则退出函数
+                }
+            }
+
+            if(waypoints_flag == 1) {
+                // 创建航点列表
+                std::vector<mavros_msgs::Waypoint> waypoints;
+
+                // 创建一个航点并设置其参数
+                mavros_msgs::Waypoint waypoint;
+                waypoint.frame = mavros_msgs::Waypoint::FRAME_GLOBAL_REL_ALT; // 例如，使用全局相对高度坐标系
+                waypoint.command = mavros_msgs::CommandCode::NAV_WAYPOINT; // 航点命令为导航到指定位置
+                waypoint.is_current = false;
+                waypoint.autocontinue = true; // 自动继续执行下一个航点
+                waypoint.param1 = 0.0;
+                waypoint.param2 = 0.0;
+                waypoint.param3 = 0.0;
+                waypoint.param4 = NAN;
+
+                if(mission_alt_ > 50.0) mission_alt_=50.0;
+                if(mission_alt_ < 0) mission_alt_=0;
+                waypoint.z_alt = mission_alt_; // 航点的相对高度
+
+                waypoint.x_lat = 23.1968912;
+                waypoint.y_long = 112.5846263;
+                waypoints.push_back(waypoint);
+
+                waypoint.x_lat = 23.196118;
+                waypoint.y_long = 112.585907;
+                waypoints.push_back(waypoint);
+
+                waypoint.x_lat = 23.194433513578012;
+                waypoint.y_long = 112.58484907323964;
+                waypoints.push_back(waypoint);
+
+                waypoint.x_lat = 23.195378852757297;
+                waypoint.y_long = 112.58375691005567;
+                waypoints.push_back(waypoint);
+
+                waypoint.x_lat = 23.19632118533539;
+                waypoint.y_long = 112.5836816404716;
+                waypoints.push_back(waypoint);
+
+                waypoint.x_lat = 23.19659346083342;
+                waypoint.y_long = 112.58319910766468;
+                waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1771954;
+                // waypoint.y_long = 112.5778758;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1770976;
+                // waypoint.y_long = 112.5782201;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1777657;
+                // waypoint.y_long = 112.5783523;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1778295;
+                // waypoint.y_long = 112.5782005;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1774136;
+                // waypoint.y_long = 112.5781111;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1967469;
+                // waypoint.y_long = 112.5821592;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1963283;
+                // waypoint.y_long = 112.5829652;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1970022;
+                // waypoint.y_long = 112.5834441;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1974289;
+                // waypoint.y_long = 112.5827578;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = 23.1968588;
+                // waypoint.y_long = 112.5825387;
+                // waypoints.push_back(waypoint);
+
+                // waypoint.x_lat = dji_position.latitude;
+                // waypoint.y_long = dji_position.longitude;
+                // waypoint.x_lat = 23.1772709;
+                // waypoint.y_long = 112.5781292;
+
+                // 将航点添加到列表中
+                // waypoints.push_back(waypoint);
+
+                // 调用服务以推送航点
+                mavros_msgs::WaypointPush wp_push;
+                wp_push.request.waypoints = waypoints;
+
+                if (ros::service::call(id_string + "/mavros/mission/push", wp_push)) {
+                    waypoints_flag = 2;
+                    ROS_INFO("Waypoints pushed successfully.");
+                } else {
+                    ROS_ERROR("Failed to push waypoints.");
+                }
+            }
+
+            if(waypoints_flag == 2) {
+                // 3. 设置飞行模式为任务模式
+                if (current_state.mode != "AUTO.MISSION") {
+                    offb_set_mode.request.custom_mode = "AUTO.MISSION";
+                    if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        launch_en_ = false;
+                        waypoints_flag = 0;
+                        ROS_INFO("MISSION mode enabled");
+                    } else {
+                        ROS_ERROR("Failed to set MISSION mode");
+                        return; // 如果无法设置模式，则退出函数
+                    }
                 }
             }
         }
@@ -652,6 +697,11 @@ namespace rviz_drone_control{
         // ROS_INFO("%s home lat: %f\t lon: %f\t alt: %f",id_string.c_str(), home_position.geo.latitude, home_position.geo.longitude, home_position.position.z);
     }
 
+    // 位置回调函数
+    // void UavButton::LocalPoseCallBack(const geometry_msgs::PoseStamped::ConstPtr &msg) {
+        
+    // }
+
     void UavButton::djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg){
         dji_position = *msg;
         // ROS_INFO("lat: %f\t lon: %f\t alt: %f", dji_position.latitude, dji_position.longitude, dji_position.altitude);
@@ -659,8 +709,6 @@ namespace rviz_drone_control{
 
     void UavButton::boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg){
         if (msg->poses.size() >= 2) {
-            std::string url = "http://192.168.144.18:7080/api/set_rect";
-
             // 假设第一个和最后一个Pose定义了选择区域的对角线
             geometry_msgs::Pose pose1 = msg->poses[0];
             geometry_msgs::Pose pose2 = msg->poses.back();
@@ -679,12 +727,39 @@ namespace rviz_drone_control{
             std::cout << "width : "<< width << "  height: " << height << std::endl;
 
             // // 调用set_rect函数，这里假设UavButton对象的指针或引用可用
-            set_rect(url, x1, y1, width, height);
+            // threads->set_rect(url, x1, y1, width, height);
+            url = "http://192.168.144.18:7080/api/set_rect";
+            threads->set_rect_param(url, x1, y1, width, height);
+            threads->set_rect_en();
         }
     }
 
-    UavButton::Requst UavButton::ParseUrl(const std::string& url){
-        UavButton::Requst req;
+    BackgroundWorker::BackgroundWorker(){
+        set_obj_en_ = false;
+        set_rect_en_ = false;
+        set_pitch_en_ = false;
+        strike_flag_ = 0;
+    }
+
+    void BackgroundWorker::run(){
+        while (true){
+            // ROS_INFO("BackgroundWorker run!");
+            sleep(2);
+            if(set_obj_en_) {
+                set_obj(url_, id_);
+                set_obj_en_=false;
+                std::cout << "set_obj clean!" << std::endl;
+            }
+            else if(set_rect_en_) {
+                set_rect(url_, x_, y_, width_, height_);
+                set_rect_en_=false;
+                std::cout << "set_rect clean!" << std::endl;
+            } 
+        }
+    }
+
+    BackgroundWorker::Requst BackgroundWorker::ParseUrl(const std::string& url){
+        BackgroundWorker::Requst req;
         int offset = 0;
         if(url.substr(0,7) == "http://"){
             offset = 7;
@@ -696,8 +771,8 @@ namespace rviz_drone_control{
         return req;
     }
 
-    int UavButton::HttpPost(const std::string& url, const std::string& body, std::string& result) {
-        UavButton::Requst req = ParseUrl(url);
+    int BackgroundWorker::HttpPost(const std::string& url, const std::string& body, std::string& result) {
+        BackgroundWorker::Requst req = ParseUrl(url);
         httplib::Client cli(req.host);
 
         if (auto res = cli.Post(req.uri.c_str(), body, "application/json")) {
@@ -718,7 +793,7 @@ namespace rviz_drone_control{
         return 0;
     }
 
-    std::string UavButton::send_http_post(const std::string& url, const std::string& body) {
+    std::string BackgroundWorker::send_http_post(const std::string& url, const std::string& body) {
         std::string result;
         if (HttpPost(url, body, result) != 0) {
             return "";
@@ -727,7 +802,7 @@ namespace rviz_drone_control{
     }
 
     // {"x": 100, "y": 100, "width": 200, "height": 200}
-    int UavButton::set_rect(const std::string& url, int x, int y, int width, int height) {
+    int BackgroundWorker::set_rect(const std::string& url, int x, int y, int width, int height) {
         std::string body = "{\"x\": " + std::to_string(x) + ", \"y\": " + std::to_string(y) + ", \"width\": " + std::to_string(width) + ", \"height\": " + std::to_string(height) + "}";
         std::string result = send_http_post(url, body);
         std::cout << "result: " << result << std::endl;
@@ -739,7 +814,7 @@ namespace rviz_drone_control{
     }
 
     // {"obj": 1}
-    int UavButton::set_obj(const std::string& url, int obj) {
+    int BackgroundWorker::set_obj(const std::string& url, int obj) {
         std::string body = "{\"id\": " + std::to_string(obj) + "}";
         std::string result = send_http_post(url, body);
         std::cout << "result: " << result << std::endl;
@@ -750,7 +825,7 @@ namespace rviz_drone_control{
         return 0;
     }
 
-    int UavButton::clean_obj(const std::string& url) {
+    int BackgroundWorker::clean_obj(const std::string& url) {
         std::string body = "";
         std::string result = send_http_post(url, body);
         std::cout << "result: " << result << std::endl;
@@ -762,11 +837,44 @@ namespace rviz_drone_control{
     }
 
     // {"x": 100, "y": 100, "width": 200, "height": 200}
-    std::string UavButton::get_track_rect(const std::string& url) {
+    std::string BackgroundWorker::get_track_rect(const std::string& url) {
         std::string body = "";
         std::string result = send_http_post(url, body);
         return result;
     }
+
+    void BackgroundWorker::set_url_param(std::string& url) {
+        url_ = url;
+    }
+
+    void BackgroundWorker::set_obj_param(const std::string& url, int id) {
+        url_ = url;
+        id_= id;
+    }
+
+    void BackgroundWorker::set_rect_param(const std::string& url, int x, int y, int width, int height) {
+        url_ = url;
+        x_ = x;
+        y_ = y;
+        width_ = width;
+        height_ = height;
+    }    
+
+    void BackgroundWorker::set_obj_en() {
+        set_obj_en_ = true;
+        std::cout << "set_obj enable!" << std::endl;
+    }
+
+    void BackgroundWorker::set_rect_en() {
+        set_rect_en_ = true;
+        std::cout << "set_rect enable!" << std::endl;
+    }
+
+    void BackgroundWorker::set_pitch_en() {
+        set_pitch_en_ = true;
+        std::cout << "set_rect enable!" << std::endl;
+    }
+
 }
 #include <pluginlib/class_list_macros.h>
 PLUGINLIB_EXPORT_CLASS(rviz_drone_control::RvizDroneControl,rviz::Panel)
