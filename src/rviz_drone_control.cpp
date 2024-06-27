@@ -70,6 +70,14 @@ namespace rviz_drone_control{
         // 连接选择框的信号到槽函数
         connect(uav_combo_box_, SIGNAL(currentIndexChanged(int)), this, SLOT(uavSelected_callback(int)));
 
+        auto *all_function_layout = new QHBoxLayout;
+
+        start_button_ = new QPushButton(tr("start"), this);
+        connect(start_button_,SIGNAL(clicked()),this,SLOT(start_callback()));
+        all_function_layout->addWidget(start_button_);
+
+        button_layout->addLayout(all_function_layout);
+
         // 将垂直布局添加到主布局中
         button_layout->addLayout(uav0_layout);
         button_layout->addLayout(uav1_layout);
@@ -150,6 +158,12 @@ namespace rviz_drone_control{
 
         pitch_ = 0;
     }
+    void RvizDroneControl::start_callback() {
+        ROS_INFO("start");
+        uav0_buttons_->set_launch_en();
+        uav1_buttons_->set_launch_en();
+        uav2_buttons_->set_launch_en();
+    }  
     void RvizDroneControl::up_callback() {
         ROS_INFO("up");
         std::string url = "http://192.168.144.18:7081/api/set_cloud_pitch?degree=";
@@ -256,9 +270,9 @@ namespace rviz_drone_control{
         takeoff_button_ = new QPushButton(tr("起飞"), parent);
 
         mission_alt_edit_ = new QLineEdit(parent);
-        mission_alt_edit_->setText("15");
-        mission_alt_ = 15.0;
-        launch_button_ = new QPushButton(tr("搜寻"), parent);
+        mission_alt_edit_->setText("30");
+        mission_alt_ = 30.0;
+        launch_button_ = new QPushButton(tr("start"), parent);
 
         strike_id_edit_ = new QLineEdit(parent);
         strike_id_edit_->setText("1");
@@ -275,17 +289,21 @@ namespace rviz_drone_control{
         return_home_button_ = new QPushButton(tr("返航"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
 
+        takeoff_button_->setVisible(false);
+        return_home_edit_->setVisible(true);
+        land_button_->setVisible(false);
+
         // // 为按钮创建水平布局
         layout_ = new QHBoxLayout;
-        layout_->addWidget(takeoff_button_);
+        // layout_->addWidget(takeoff_button_);
         layout_->addWidget(mission_alt_edit_);
         layout_->addWidget(launch_button_);
         layout_->addWidget(strike_id_edit_);
         layout_->addWidget(strike_button_);
         layout_->addWidget(strike_clean_button_);
         layout_->addWidget(track_button_);
-        // layout_->addWidget(return_home_edit_);
-        // layout_->addWidget(return_home_button_);
+        layout_->addWidget(return_home_edit_);
+        layout_->addWidget(return_home_button_);
         // layout_->addWidget(land_button_);
 
         group_box_->setLayout(layout_);
@@ -302,6 +320,13 @@ namespace rviz_drone_control{
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
 
         id_string = id.toStdString();
+        if (!id_string.empty() && std::isdigit(id_string.back())) {
+            uav_id_num_ = std::stoi(std::string(1, id_string.back()));
+        } else {
+            // 处理错误情况，例如抛出异常或设置一个默认值
+            // 这里只是一个示例，实际的错误处理可能需要根据你的应用来定
+            uav_id_num_ = -1; // 或者其他表示错误的值
+        }
         // 为起飞、发射、返航、降落创建ROS发布者
         takeoff_pub_ = nh_.advertise<std_msgs::Empty>(id_string + "/takeoff_topic", 1);
         launch_pub_ = nh_.advertise<std_msgs::Empty>(id_string + "/launch_topic", 1);
@@ -317,6 +342,14 @@ namespace rviz_drone_control{
         
         waypoints_flag = 0;
 
+        // 服务的客户端（设定无人机的模式、状态）
+        arming_client = nh_.serviceClient<mavros_msgs::CommandBool>(id_string + "/mavros/cmd/arming");
+        set_mode_client = nh_.serviceClient<mavros_msgs::SetMode>(id_string + "/mavros/set_mode");
+        param_get_client_ = nh_.serviceClient<mavros_msgs::ParamGet>(id_string + "/mavros/param/get");
+        param_set_client_ = nh_.serviceClient<mavros_msgs::ParamSet>(id_string + "/mavros/param/set");
+        param_pull_client_ = nh_.serviceClient<mavros_msgs::ParamPull>(id_string + "/mavros/param/pull");
+        param_push_client_ = nh_.serviceClient<mavros_msgs::ParamPush>(id_string + "/mavros/param/push");
+
         mavros_state_sub_ = nh_.subscribe<mavros_msgs::State>(id_string + "/mavros/state", 10, &UavButton::mavrosStateCallback, this);
         mavros_home_sub_ = nh_.subscribe<mavros_msgs::HomePosition>(id_string + "/mavros/home_position/home", 10, &UavButton::mavrosHomeCallback, this);
 
@@ -325,14 +358,6 @@ namespace rviz_drone_control{
         box_select_sub_ = nh_.subscribe<geometry_msgs::PoseArray>(id_string + "/box_select", 10, &UavButton::boxSelectCallback, this);
 
         // local_pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &UavButton::LocalPoseCallBack, this);
-
-        // 服务的客户端（设定无人机的模式、状态）
-        arming_client = nh_.serviceClient<mavros_msgs::CommandBool>(id_string + "/mavros/cmd/arming");
-        set_mode_client = nh_.serviceClient<mavros_msgs::SetMode>(id_string + "/mavros/set_mode");
-        param_get_client_ = nh_.serviceClient<mavros_msgs::ParamGet>(id_string + "/mavros/param/get");
-        param_set_client_ = nh_.serviceClient<mavros_msgs::ParamSet>(id_string + "/mavros/param/set");
-        param_pull_client_ = nh_.serviceClient<mavros_msgs::ParamPull>(id_string + "/mavros/param/pull");
-        param_push_client_ = nh_.serviceClient<mavros_msgs::ParamPush>(id_string + "/mavros/param/push");
 
         offb_set_mode.request.custom_mode = "POSCTL";
 
@@ -353,6 +378,11 @@ namespace rviz_drone_control{
 
     void UavButton::set_Visible(bool visible) {
         group_box_->setVisible(visible);
+    }
+
+    void UavButton::set_launch_en() {
+        launch_en_ = true;
+        mission_alt_ = 20 + uav_id_num_ * 10;
     }
 
     void UavButton::takeoff_callback() {
@@ -441,7 +471,7 @@ namespace rviz_drone_control{
             std::cout << "return home alt: " << return_home_alt_ << std::endl;
             response = paramSet("RTL_RETURN_ALT", return_home_alt_);
 
-            if(response > 10.0 && response < 50)
+            if(response > 10.0 && response < 70.0)
             {    
                 return_home_en_ = true;
                 ROS_INFO("Return Home button clicked.");
@@ -469,21 +499,30 @@ namespace rviz_drone_control{
 
         bool flag = param_get_client_.call(srv);
 
-        // 调用服务
-        if (flag) {
-            // 检查服务响应是否成功
-            if (srv.response.success) {
-                // 返回参数值
-                return srv.response.value.real;
+        double param_value = NAN; // 使用 NAN 或者一个默认值作为初始值
+
+        try {
+            // 调用服务
+            if (flag) {
+                // 检查服务响应是否成功
+                if (srv.response.success) {
+                    // 返回参数值
+                    return srv.response.value.real;
+                } else {
+                    ROS_ERROR("Failed to get parameter: %s", param_str.c_str());
+                    // 处理错误情况，例如返回一个默认值或抛出异常
+                    throw std::runtime_error("Parameter get service call failed.");
+                }
             } else {
-                ROS_ERROR("Failed to get parameter: %s", param_str.c_str());
+                ROS_ERROR("Service call failed: /%s/mavros/param/get", id_string.c_str());
                 // 处理错误情况，例如返回一个默认值或抛出异常
-                throw std::runtime_error("Parameter get service call failed.");
+                throw std::runtime_error("Service call to /mavros/param/get failed.");
             }
-        } else {
-            ROS_ERROR("Service call failed: /%s/mavros/param/get", id_string.c_str());
-            // 处理错误情况，例如返回一个默认值或抛出异常
-            throw std::runtime_error("Service call to /mavros/param/get failed.");
+        } catch (const std::runtime_error& e) {
+            // 捕获异常并记录错误信息
+            ROS_ERROR("%s", e.what());
+            // 可以选择在这里执行其他错误处理操作，例如重试或返回一个特定的错误代码
+            return param_value; // 返回初始设置的默认值
         }
     }
 
@@ -494,30 +533,45 @@ namespace rviz_drone_control{
         
         bool flag = param_set_client_.call(srv);
 
-        // 调用服务
-        if (flag) {
-            // 检查服务响应是否成功
-            if (srv.response.success) {
-                // 返回参数值
-                ROS_INFO("Set %s to %lf", param_str.c_str(), srv.response.value.real);
-                return srv.response.value.real;
+        double param_value = NAN; // 使用 NAN 或者一个默认值作为初始值
+
+        try{
+            // 调用服务
+            if (flag) {
+                // 检查服务响应是否成功
+                if (srv.response.success) {
+                    // 返回参数值
+                    ROS_INFO("Set %s to %lf", param_str.c_str(), srv.response.value.real);
+                    return srv.response.value.real;
+                } else {
+                    ROS_ERROR("Failed to set parameter: %s", param_str.c_str());
+                    // 处理错误情况，例如返回一个默认值或抛出异常
+                    // throw std::runtime_error("Parameter set service call failed.");
+                }
             } else {
-                ROS_ERROR("Failed to set parameter: %s", param_str.c_str());
+                ROS_ERROR("Service call failed: /%s/mavros/param/get", id_string.c_str());
                 // 处理错误情况，例如返回一个默认值或抛出异常
-                throw std::runtime_error("Parameter set service call failed.");
+                // throw std::runtime_error("Service call to /mavros/param/get failed.");
             }
-        } else {
-            ROS_ERROR("Service call failed: /%s/mavros/param/get", id_string.c_str());
-            // 处理错误情况，例如返回一个默认值或抛出异常
-            throw std::runtime_error("Service call to /mavros/param/get failed.");
+        } catch (const std::runtime_error& e) {
+            // 捕获异常并记录错误信息
+            ROS_ERROR("%s", e.what());
+            // 可以选择在这里执行其他错误处理操作，例如重试或返回一个特定的错误代码
+            return param_value; // 返回初始设置的默认值
         }
     }
 
     void UavButton::mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg){
         current_state = *msg;
-
+        // std::cout << "RTL_RETURN_ALT: " << return_home_alt_ << std::endl;
         if(return_home_alt_ == 0){
-            return_home_alt_ = paramGet("RTL_RETURN_ALT");
+            ros::service::waitForService(id_string + "/mavros/param/get");
+            std::cout << id_string << std::endl;
+            // return_home_alt_ = paramGet("RTL_RETURN_ALT");
+            if(uav_id_num_ != -1) {
+                return_home_alt_ = 20 + uav_id_num_ * 10;
+            }
+
             QString return_home_alt_str_ = QString::number(return_home_alt_);
             return_home_edit_->setText(return_home_alt_str_);
         }
@@ -678,6 +732,49 @@ namespace rviz_drone_control{
             }
 
             if(waypoints_flag == 2) {
+                // 1. 设置飞行模式为定点模式
+                if (current_state.mode != "POSCTL") {
+                    offb_set_mode.request.custom_mode = "POSCTL";
+                    if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        waypoints_flag = 3;
+                        ROS_INFO("POSCTL mode enabled");
+
+                    } else {
+                        ROS_ERROR("Failed to set POSCTL mode");
+                        return; // 如果无法设置模式，则退出函数
+                    }
+                }
+            }
+
+            if(waypoints_flag == 3) {
+                // 2. 确保无人机连接并处于正确的模式
+                if (!current_state.armed) {
+                    // 3. 发布ARM命令
+                    if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
+                        waypoints_flag = 4;
+                        ROS_INFO("Vehicle armed");
+                    } else {
+                        ROS_ERROR("Failed to arm vehicle");
+                        return; // 如果无法武装无人机，则退出函数
+                    }
+                }
+            }
+
+            if(waypoints_flag == 4) {
+                // 3. 设置飞行模式为起飞模式
+                if (current_state.mode != "AUTO.TAKEOFF") {
+                    offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
+                    if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                        waypoints_flag = 5;
+                        ROS_INFO("TAKEOFF mode enabled");
+                    } else {
+                        ROS_ERROR("Failed to set TAKEOFF mode");
+                        return; // 如果无法设置模式，则退出函数
+                    }
+                }
+            }
+
+            if(waypoints_flag == 5) {
                 // 3. 设置飞行模式为任务模式
                 if (current_state.mode != "AUTO.MISSION") {
                     offb_set_mode.request.custom_mode = "AUTO.MISSION";

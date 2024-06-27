@@ -37,7 +37,7 @@
 #include <vector>
 #include <QProcess>
 #include <QThread>
-
+#include <cstdlib> // 对于 std::stoi
 
 namespace rviz_drone_control{
     class BackgroundWorker : public QThread{
@@ -99,6 +99,8 @@ namespace rviz_drone_control{
         double paramSet(std::string param_str, double vaule);
         BackgroundWorker* threads;
 
+        void set_launch_en();
+
     protected Q_SLOTS:
         void takeoff_callback();
         void launch_callback();
@@ -107,6 +109,7 @@ namespace rviz_drone_control{
         void track_callback();
         void return_home_callback();
         void land_callback();
+
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
         void mavrosHomeCallback(const mavros_msgs::HomePosition::ConstPtr &msg);
         void LocalPoseCallBack(const geometry_msgs::PoseStamped::ConstPtr &msg);
@@ -152,6 +155,7 @@ namespace rviz_drone_control{
         ros::Subscriber dji_position_sub_;
 
         std::string uav_id_;
+        int uav_id_num_;
         mavros_msgs::State current_state;
         mavros_msgs::HomePosition home_position;
         geometry_msgs::TwistStamped current_velocity;
@@ -179,6 +183,7 @@ namespace rviz_drone_control{
     protected Q_SLOTS:
         void test_callback();
         void test2_callback();
+        void start_callback();
         void up_callback();
         void turn_left_callback();
         void turn_right_callback();
@@ -195,6 +200,7 @@ namespace rviz_drone_control{
         ros::NodeHandle nh_;
         QPushButton *test_button_;
         QPushButton *test2_button_;
+        QPushButton *start_button_;
         
         ros::Publisher test_pub_, test2_pub_;
         ros::Publisher mavros_manual_control_pub_;
