@@ -54,11 +54,13 @@ namespace rviz_drone_control{
         void set_obj_param(const std::string& url, int id);
         void set_rect_param(const std::string& url, int x, int y, int width, int height);
         void set_clean_param(const std::string& url);
-        void set_cloud_pitch_param(int pitch);
+        void set_cloud_pitch_param(const std::string& url, int pitch);
+        void set_track_drve_param(const std::string& url, int speed);
         void set_obj_en();
         void set_rect_en();
         void set_clean_en();
         void set_pitch_en();
+        void set_track_drve_en();
         Requst ParseUrl(const std::string& url);
         int HttpPost(const std::string& url, const std::string& body, std::string& result);
         std::string send_http_post(const std::string& url, const std::string& body);
@@ -66,7 +68,8 @@ namespace rviz_drone_control{
         int set_obj(const std::string& url, int obj);
         int clean_obj(const std::string& url);
         std::string get_track_rect(const std::string& url);
-        int set_cloud_pitch(int pitch);
+        int set_cloud_pitch(const std::string& url, int pitch);
+        int track_dive(const std::string& url, int speed);
 
     private:
         std::string url_;
@@ -76,9 +79,12 @@ namespace rviz_drone_control{
         bool set_rect_en_;
         bool set_clean_en_;
         bool set_pitch_en_;
+        bool set_track_drve_en_;
 
         int strike_flag_;
 
+        int pitch_;
+        int speed_;
     };
 
     class UavButton :public QWidget{
@@ -91,12 +97,14 @@ namespace rviz_drone_control{
 
         double paramGet(std::string param_str);
         double paramSet(std::string param_str, double vaule);
+        BackgroundWorker* threads;
 
     protected Q_SLOTS:
         void takeoff_callback();
         void launch_callback();
         void strike_callback();
         void strike_clean_callback();
+        void track_callback();
         void return_home_callback();
         void land_callback();
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
@@ -106,8 +114,6 @@ namespace rviz_drone_control{
         void boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg);
 
     private:
-        BackgroundWorker* threads;
-
         QPushButton *takeoff_button_;
         QLineEdit *mission_alt_edit_;
         double mission_alt_;
@@ -115,6 +121,7 @@ namespace rviz_drone_control{
         QLineEdit *strike_id_edit_;
         QPushButton *strike_button_;
         QPushButton *strike_clean_button_;
+        QPushButton *track_button_;
         QLineEdit *return_home_edit_;
         QPushButton *return_home_button_;
         QPushButton *land_button_;
@@ -130,6 +137,7 @@ namespace rviz_drone_control{
         bool takeoff_en_ = false;
         bool launch_en_ = false;
         bool strike_en_ = false;
+        bool track_en_ = false;
         bool return_home_en_ = false;
         bool land_en_ = false;
         
@@ -205,6 +213,8 @@ namespace rviz_drone_control{
         QComboBox *uav_combo_box_; // 新增的无人机选择框
 
         std::string uav_select_;
+
+        int pitch_;
     };
 }
 

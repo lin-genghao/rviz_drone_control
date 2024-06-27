@@ -148,9 +148,14 @@ namespace rviz_drone_control{
         connect(left_button,SIGNAL(clicked()),this,SLOT(left_callback()));
         connect(right_button,SIGNAL(clicked()),this,SLOT(right_callback()));
 
+        pitch_ = 0;
     }
     void RvizDroneControl::up_callback() {
         ROS_INFO("up");
+        std::string url = "http://192.168.144.18:7081/api/set_cloud_pitch?degree=";
+        pitch_=-5;
+        uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
+        uav1_buttons_->threads->set_pitch_en();
     }
     void RvizDroneControl::turn_left_callback() {
         ROS_INFO("left");
@@ -159,7 +164,11 @@ namespace rviz_drone_control{
 
     }
     void RvizDroneControl::down_callback() {
-
+        ROS_INFO("down");
+        std::string url = "http://192.168.144.18:7081/api/set_cloud_pitch?degree=";
+        pitch_=5;
+        uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
+        uav1_buttons_->threads->set_pitch_en();
     }
     void RvizDroneControl::front_callback() {
 
@@ -257,6 +266,8 @@ namespace rviz_drone_control{
 
         strike_clean_button_ = new QPushButton(tr("clean"), parent);
 
+        track_button_ = new QPushButton(tr("track"), parent);
+
         return_home_edit_ = new QLineEdit(parent);
         return_home_edit_->setText("None");
         return_home_alt_ = 0;
@@ -272,9 +283,10 @@ namespace rviz_drone_control{
         layout_->addWidget(strike_id_edit_);
         layout_->addWidget(strike_button_);
         layout_->addWidget(strike_clean_button_);
-        layout_->addWidget(return_home_edit_);
-        layout_->addWidget(return_home_button_);
-        layout_->addWidget(land_button_);
+        layout_->addWidget(track_button_);
+        // layout_->addWidget(return_home_edit_);
+        // layout_->addWidget(return_home_button_);
+        // layout_->addWidget(land_button_);
 
         group_box_->setLayout(layout_);
 
@@ -285,6 +297,7 @@ namespace rviz_drone_control{
         connect(launch_button_, SIGNAL(clicked()), this, SLOT(launch_callback()));
         connect(strike_button_, SIGNAL(clicked()), this, SLOT(strike_callback()));
         connect(strike_clean_button_, SIGNAL(clicked()), this, SLOT(strike_clean_callback()));
+        connect(track_button_, SIGNAL(clicked()), this, SLOT(track_callback()));
         connect(return_home_button_, SIGNAL(clicked()), this, SLOT(return_home_callback()));
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
 
@@ -298,6 +311,7 @@ namespace rviz_drone_control{
         takeoff_en_ = false;
         launch_en_ = false;
         strike_en_ = false;
+        track_en_ = false;
         return_home_en_ = false;
         land_en_ = false;
         
@@ -401,6 +415,13 @@ namespace rviz_drone_control{
         // clean_obj(url);
         threads->set_clean_param(url);
         threads->set_clean_en();
+    }
+
+    void UavButton::track_callback() {
+        ROS_INFO("Track button clicked.");
+        std::string url = "http://192.168.144.18:7081/api/track_dive?speed=";
+        threads->set_track_drve_param(url, 15);
+        threads->set_track_drve_en();   
     }
 
     void UavButton::return_home_callback() {
@@ -751,6 +772,7 @@ namespace rviz_drone_control{
         set_rect_en_ = false;
         set_clean_en_ = false;
         set_pitch_en_ = false;
+        set_track_drve_en_ = false;
         strike_flag_ = 0;
     }
 
@@ -772,6 +794,16 @@ namespace rviz_drone_control{
                 clean_obj(url_);
                 set_clean_en_=false;
                 std::cout << "set_clean clean!" << std::endl;
+            }
+            else if(set_pitch_en_) {
+                set_cloud_pitch(url_, pitch_);
+                set_pitch_en_=false;
+                std::cout << "set_cloud_pitch clean!" << std::endl;
+            }
+            else if(set_track_drve_en_) {
+                track_dive(url_, speed_);
+                set_track_drve_en_=false;
+                std::cout << "set_track_drve clean!" << std::endl;
             }
         }
     }
@@ -853,12 +885,34 @@ namespace rviz_drone_control{
         }
         return 0;
     }
-
     // {"x": 100, "y": 100, "width": 200, "height": 200}
     std::string BackgroundWorker::get_track_rect(const std::string& url) {
         std::string body = "";
         std::string result = send_http_post(url, body);
         return result;
+    }
+
+    int BackgroundWorker::set_cloud_pitch(const std::string& url, int pitch) {
+        // std::string url = "http://192.168.144.18:7081/api/set_cloud_pitch?degree=" + std::to_string(pitch);
+        std::cout << "url: " << url << std::endl;
+        std::string result = send_http_post(url_, "");
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    int BackgroundWorker::track_dive(const std::string& url, int speed) {
+        // std::string url = "http://192.168.144.18:7081/api/track_dive?speed=" + std::to_string(speed);
+        std::string result = send_http_post(url_, "");
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
     }
 
     void BackgroundWorker::set_url_param(std::string& url) {
@@ -882,6 +936,16 @@ namespace rviz_drone_control{
         height_ = height;
     }    
 
+    void BackgroundWorker::set_cloud_pitch_param(const std::string& url, int pitch) {
+        url_ = url + std::to_string(pitch);
+        pitch_ = pitch;
+    }
+
+    void BackgroundWorker::set_track_drve_param(const std::string& url, int speed) {
+        url_ = url + std::to_string(speed);
+        speed_ = speed;
+    }
+
     void BackgroundWorker::set_obj_en() {
         set_obj_en_ = true;
         std::cout << "set_obj enable!" << std::endl;
@@ -894,12 +958,17 @@ namespace rviz_drone_control{
 
     void BackgroundWorker::set_pitch_en() {
         set_pitch_en_ = true;
-        std::cout << "set_rect enable!" << std::endl;
+        std::cout << "set_cloud_pitch enable!" << std::endl;
     }
 
     void BackgroundWorker::set_clean_en() {
         set_clean_en_ = true;
         std::cout << "set_clean enable!" << std::endl;
+    }    
+
+    void BackgroundWorker::set_track_drve_en() {
+        set_track_drve_en_ = true;
+        std::cout << "set_track_drve enable!" << std::endl;
     }    
 
 }
