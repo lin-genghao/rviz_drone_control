@@ -53,9 +53,11 @@ namespace rviz_drone_control{
         void set_url_param(std::string& url);
         void set_obj_param(const std::string& url, int id);
         void set_rect_param(const std::string& url, int x, int y, int width, int height);
+        void set_clean_param(const std::string& url);
         void set_cloud_pitch_param(int pitch);
         void set_obj_en();
         void set_rect_en();
+        void set_clean_en();
         void set_pitch_en();
         Requst ParseUrl(const std::string& url);
         int HttpPost(const std::string& url, const std::string& body, std::string& result);
@@ -72,6 +74,7 @@ namespace rviz_drone_control{
         int x_, y_, width_, height_;
         bool set_obj_en_;
         bool set_rect_en_;
+        bool set_clean_en_;
         bool set_pitch_en_;
 
         int strike_flag_;
@@ -93,6 +96,7 @@ namespace rviz_drone_control{
         void takeoff_callback();
         void launch_callback();
         void strike_callback();
+        void strike_clean_callback();
         void return_home_callback();
         void land_callback();
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
@@ -110,6 +114,7 @@ namespace rviz_drone_control{
         QPushButton *launch_button_;
         QLineEdit *strike_id_edit_;
         QPushButton *strike_button_;
+        QPushButton *strike_clean_button_;
         QLineEdit *return_home_edit_;
         QPushButton *return_home_button_;
         QPushButton *land_button_;

@@ -255,6 +255,8 @@ namespace rviz_drone_control{
         strike_id_edit_->setText("1");
         strike_button_ = new QPushButton(tr("打击"), parent);
 
+        strike_clean_button_ = new QPushButton(tr("clean"), parent);
+
         return_home_edit_ = new QLineEdit(parent);
         return_home_edit_->setText("None");
         return_home_alt_ = 0;
@@ -269,6 +271,7 @@ namespace rviz_drone_control{
         layout_->addWidget(launch_button_);
         layout_->addWidget(strike_id_edit_);
         layout_->addWidget(strike_button_);
+        layout_->addWidget(strike_clean_button_);
         layout_->addWidget(return_home_edit_);
         layout_->addWidget(return_home_button_);
         layout_->addWidget(land_button_);
@@ -281,6 +284,7 @@ namespace rviz_drone_control{
         connect(takeoff_button_, SIGNAL(clicked()), this, SLOT(takeoff_callback()));
         connect(launch_button_, SIGNAL(clicked()), this, SLOT(launch_callback()));
         connect(strike_button_, SIGNAL(clicked()), this, SLOT(strike_callback()));
+        connect(strike_clean_button_, SIGNAL(clicked()), this, SLOT(strike_clean_callback()));
         connect(return_home_button_, SIGNAL(clicked()), this, SLOT(return_home_callback()));
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
 
@@ -389,6 +393,14 @@ namespace rviz_drone_control{
         threads->set_obj_param(url, strike_id_);
         threads->set_obj_en();
         // set_rect(url, 100, 100, 200, 200);
+    }
+
+    void UavButton::strike_clean_callback() {
+        ROS_INFO("Strike clean button clicked.");
+        std::string url = "http://192.168.144.18:7080/api/clean_obj";
+        // clean_obj(url);
+        threads->set_clean_param(url);
+        threads->set_clean_en();
     }
 
     void UavButton::return_home_callback() {
@@ -737,6 +749,7 @@ namespace rviz_drone_control{
     BackgroundWorker::BackgroundWorker(){
         set_obj_en_ = false;
         set_rect_en_ = false;
+        set_clean_en_ = false;
         set_pitch_en_ = false;
         strike_flag_ = 0;
     }
@@ -755,6 +768,11 @@ namespace rviz_drone_control{
                 set_rect_en_=false;
                 std::cout << "set_rect clean!" << std::endl;
             } 
+            else if(set_clean_en_) {
+                clean_obj(url_);
+                set_clean_en_=false;
+                std::cout << "set_clean clean!" << std::endl;
+            }
         }
     }
 
@@ -852,6 +870,10 @@ namespace rviz_drone_control{
         id_= id;
     }
 
+    void BackgroundWorker::set_clean_param(const std::string& url) {
+        url_ = url;
+    }
+
     void BackgroundWorker::set_rect_param(const std::string& url, int x, int y, int width, int height) {
         url_ = url;
         x_ = x;
@@ -874,6 +896,11 @@ namespace rviz_drone_control{
         set_pitch_en_ = true;
         std::cout << "set_rect enable!" << std::endl;
     }
+
+    void BackgroundWorker::set_clean_en() {
+        set_clean_en_ = true;
+        std::cout << "set_clean enable!" << std::endl;
+    }    
 
 }
 #include <pluginlib/class_list_macros.h>
