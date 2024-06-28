@@ -174,9 +174,10 @@ namespace rviz_drone_control{
 	
         uav2_buttons_->set_launch_en();
         // uav0_buttons_->set_launch_en();
-        uav1_buttons_->set_launch_en();
-        ROS_INFO("uav1 started");
         sleep(5);
+        uav1_buttons_->set_launch_en();
+
+        ROS_INFO("uav1 started");
         ROS_INFO("uav2 started");
     }  
     void RvizDroneControl::up_callback() {
@@ -465,7 +466,7 @@ namespace rviz_drone_control{
     }
 
     void UavButton::set_launch_en() {
-        launch_en_ = true;
+        // launch_en_ = true;
         mission_alt_ = 20 + uav_id_num_ * 10;
 
         float x_lat = 23.19659346083342;
