@@ -79,7 +79,7 @@ namespace rviz_drone_control{
         button_layout->addLayout(all_function_layout);
 
         // 将垂直布局添加到主布局中
-        button_layout->addLayout(uav0_layout);
+        // button_layout->addLayout(uav0_layout);
         button_layout->addLayout(uav1_layout);
         button_layout->addLayout(uav2_layout);
 
@@ -146,7 +146,18 @@ namespace rviz_drone_control{
         // 将菱形布局添加到主布局中
         button_move->addLayout(diamond_layout);
         button_move->addLayout(diamond_layout_2);
+        up_button->setVisible(true);
+        turn_left_button->setVisible(true);
+        turn_right_button->setVisible(true);
+        down_button->setVisible(true);
+        front_button->setVisible(false);
+        left_button->setVisible(false);
+        right_button->setVisible(false);
+        back_button->setVisible(false);
+
         button_layout->addLayout(button_move);
+
+        // button_move->setVisible(false);
         
         connect(up_button,SIGNAL(clicked()),this,SLOT(up_callback()));
         connect(turn_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
@@ -160,29 +171,82 @@ namespace rviz_drone_control{
     }
     void RvizDroneControl::start_callback() {
         ROS_INFO("start");
-        uav0_buttons_->set_launch_en();
-        uav1_buttons_->set_launch_en();
+	
         uav2_buttons_->set_launch_en();
+        // uav0_buttons_->set_launch_en();
+        uav1_buttons_->set_launch_en();
+        ROS_INFO("uav1 started");
+        sleep(5);
+        ROS_INFO("uav2 started");
     }  
     void RvizDroneControl::up_callback() {
-        ROS_INFO("up");
-        std::string url = "http://192.168.144.18:7081/api/set_cloud_pitch?degree=";
-        pitch_=-5;
-        uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
-        uav1_buttons_->threads->set_pitch_en();
+        ROS_INFO("up, %s", uav_select_.c_str());
+        std::string url;
+        if(uav_select_ == "/uav1") {
+            ROS_INFO("uav1 up");
+            url = uav1_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
+            pitch_=-5;
+            uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
+            uav1_buttons_->threads->set_pitch_en();
+        }
+        if(uav_select_ == "/uav2") {
+            url = uav2_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
+            pitch_=-5;
+            uav2_buttons_->threads->set_cloud_pitch_param(url, pitch_);
+            uav2_buttons_->threads->set_pitch_en();
+        }
+
     }
     void RvizDroneControl::turn_left_callback() {
-        ROS_INFO("left");
+        ROS_INFO("left, %s", uav_select_.c_str());
+        std::string url;
+        if(uav_select_ == "/uav1") {
+            ROS_INFO("uav1 left");
+            url = uav1_buttons_->url_1 + "/api/rotation?degree=";
+            yaw_=10;
+            uav1_buttons_->threads->set_yaw_param(url, yaw_);
+            uav1_buttons_->threads->set_yaw_en();
+        }
+        if(uav_select_ == "/uav2") {
+            url = uav2_buttons_->url_1 + "/api/rotation?degree=";
+            yaw_=10;
+            uav2_buttons_->threads->set_yaw_param(url, yaw_);
+            uav2_buttons_->threads->set_yaw_en();
+        }
     }
     void RvizDroneControl::turn_right_callback() {
-
+        ROS_INFO("right, %s", uav_select_.c_str());
+        std::string url;
+        if(uav_select_ == "/uav1") {
+            ROS_INFO("uav1 right");
+            url = uav1_buttons_->url_1 + "/api/rotation?degree=";
+            yaw_=-10;
+            uav1_buttons_->threads->set_yaw_param(url, yaw_);
+            uav1_buttons_->threads->set_yaw_en();
+        }
+        if(uav_select_ == "/uav2") {
+            url = uav2_buttons_->url_1 + "/api/rotation?degree=";
+            yaw_=-10;
+            uav2_buttons_->threads->set_yaw_param(url, yaw_);
+            uav2_buttons_->threads->set_yaw_en();
+        }
     }
     void RvizDroneControl::down_callback() {
         ROS_INFO("down");
-        std::string url = "http://192.168.144.18:7081/api/set_cloud_pitch?degree=";
-        pitch_=5;
-        uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
-        uav1_buttons_->threads->set_pitch_en();
+        std::string url;
+
+        if(uav_select_ == "/uav1") {
+            url = uav1_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
+            pitch_=5;
+            uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
+            uav1_buttons_->threads->set_pitch_en();
+        }
+        if(uav_select_ == "/uav2") {
+            url = uav2_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
+            pitch_=5;
+            uav2_buttons_->threads->set_cloud_pitch_param(url, pitch_);
+            uav2_buttons_->threads->set_pitch_en();
+        }
     }
     void RvizDroneControl::front_callback() {
 
@@ -226,7 +290,7 @@ namespace rviz_drone_control{
     
     void RvizDroneControl::manual_control_callback(const mavros_msgs::ManualControl::ConstPtr &msg){
         mavros_msgs::ManualControl manual_control_msg_pub = *msg;
-        mavros_manual_control_pub_.publish(manual_control_msg_pub);
+        // mavros_manual_control_pub_.publish(manual_control_msg_pub);
         // ROS_INFO("--------manual_control %s", uav_select_.c_str());
         
     }
@@ -276,11 +340,13 @@ namespace rviz_drone_control{
 
         strike_id_edit_ = new QLineEdit(parent);
         strike_id_edit_->setText("1");
-        strike_button_ = new QPushButton(tr("打击"), parent);
+        strike_button_ = new QPushButton(tr("lock"), parent);
 
-        strike_clean_button_ = new QPushButton(tr("clean"), parent);
+        strike_clean_button_ = new QPushButton(tr("stop"), parent);
 
-        track_button_ = new QPushButton(tr("track"), parent);
+        track_button_ = new QPushButton(tr("attack"), parent);
+
+        follow_button_ = new QPushButton(tr("follow"), parent);
 
         return_home_edit_ = new QLineEdit(parent);
         return_home_edit_->setText("None");
@@ -289,9 +355,11 @@ namespace rviz_drone_control{
         return_home_button_ = new QPushButton(tr("返航"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
 
+        mission_alt_edit_->setVisible(false);
+        launch_button_->setVisible(false);
         takeoff_button_->setVisible(false);
-        return_home_edit_->setVisible(true);
-        land_button_->setVisible(false);
+        return_home_edit_->setVisible(false);
+        return_home_button_->setVisible(true);
 
         // // 为按钮创建水平布局
         layout_ = new QHBoxLayout;
@@ -300,8 +368,9 @@ namespace rviz_drone_control{
         layout_->addWidget(launch_button_);
         layout_->addWidget(strike_id_edit_);
         layout_->addWidget(strike_button_);
-        layout_->addWidget(strike_clean_button_);
         layout_->addWidget(track_button_);
+        layout_->addWidget(follow_button_);
+        layout_->addWidget(strike_clean_button_);
         layout_->addWidget(return_home_edit_);
         layout_->addWidget(return_home_button_);
         // layout_->addWidget(land_button_);
@@ -316,6 +385,7 @@ namespace rviz_drone_control{
         connect(strike_button_, SIGNAL(clicked()), this, SLOT(strike_callback()));
         connect(strike_clean_button_, SIGNAL(clicked()), this, SLOT(strike_clean_callback()));
         connect(track_button_, SIGNAL(clicked()), this, SLOT(track_callback()));
+        connect(follow_button_, SIGNAL(clicked()), this, SLOT(follow_callback()));
         connect(return_home_button_, SIGNAL(clicked()), this, SLOT(return_home_callback()));
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
 
@@ -327,6 +397,19 @@ namespace rviz_drone_control{
             // 这里只是一个示例，实际的错误处理可能需要根据你的应用来定
             uav_id_num_ = -1; // 或者其他表示错误的值
         }
+        url_prefix = "http://";
+        port_0 = 7080;
+        port_1 = 7081;
+        url_suffix = "/api/set_cloud_pitch?degree=";
+        last_part_of_ip = 30 + uav_id_num_;
+        url_0 = url_prefix + "192.168.144." + std::to_string(last_part_of_ip) + 
+                ":" + std::to_string(port_0);
+        url_1 = url_prefix + "192.168.144." + std::to_string(last_part_of_ip) + 
+                        ":" + std::to_string(port_1);
+
+        std::cout << url_0 << std::endl;
+        std::cout << url_1 << std::endl;
+
         // 为起飞、发射、返航、降落创建ROS发布者
         takeoff_pub_ = nh_.advertise<std_msgs::Empty>(id_string + "/takeoff_topic", 1);
         launch_pub_ = nh_.advertise<std_msgs::Empty>(id_string + "/launch_topic", 1);
@@ -337,6 +420,7 @@ namespace rviz_drone_control{
         launch_en_ = false;
         strike_en_ = false;
         track_en_ = false;
+        follow_en_ = false;
         return_home_en_ = false;
         land_en_ = false;
         
@@ -383,6 +467,15 @@ namespace rviz_drone_control{
     void UavButton::set_launch_en() {
         launch_en_ = true;
         mission_alt_ = 20 + uav_id_num_ * 10;
+
+        float x_lat = 23.19659346083342;
+        float y_long = 112.58319910766468;
+
+        std::cout << "" << std::endl;
+        url = url_1 + "/api/fly_mission?id=";
+        threads->set_mission_param(url, uav_id_num_, x_lat, y_long);
+        threads->set_mission_en();
+        launch_en_ = false;
     }
 
     void UavButton::takeoff_callback() {
@@ -433,7 +526,7 @@ namespace rviz_drone_control{
             // 输入无效，弹出提示信息
             QMessageBox::warning(this, "Input Error", "Please enter a valid integer.");
         }
-        url = "http://192.168.144.18:7080/api/set_obj";
+        url = url_0 + "/api/set_obj";
         threads->set_obj_param(url, strike_id_);
         threads->set_obj_en();
         // set_rect(url, 100, 100, 200, 200);
@@ -441,7 +534,7 @@ namespace rviz_drone_control{
 
     void UavButton::strike_clean_callback() {
         ROS_INFO("Strike clean button clicked.");
-        std::string url = "http://192.168.144.18:7080/api/clean_obj";
+        url = url_0 + "/api/clean_obj";
         // clean_obj(url);
         threads->set_clean_param(url);
         threads->set_clean_en();
@@ -449,9 +542,54 @@ namespace rviz_drone_control{
 
     void UavButton::track_callback() {
         ROS_INFO("Track button clicked.");
-        std::string url = "http://192.168.144.18:7081/api/track_dive?speed=";
-        threads->set_track_drve_param(url, 15);
+        url = url_1 + "/api/track_dive?speed=";
+        FILE* fp = fopen("/home/lgh/catkin_ws/src/ground_station/launch/dive_speed.txt","r");
+        char buff[1024] = {0};
+        fread(buff, 1, 1024, fp);
+        fclose(fp);
+        float speed = atof(buff);
+        std::cout << url << std::endl;
+        std::cout << speed << std::endl;
+        threads->set_track_drve_param(url, speed);
         threads->set_track_drve_en();   
+    }
+
+    void UavButton::follow_callback() {
+        ROS_INFO("Follow button clicked.");
+        // "http://192.168.144.18:7081/api/follow?keep_deg="
+        url = url_1 + "/api/follow?keep_deg=";
+        FILE* fp = fopen("/home/lgh/catkin_ws/src/ground_station/launch/follow_param.txt","r");
+        // char buff[1024] = {0};
+        // fread(buff, 1, 1024, fp);
+        // fclose(fp);
+
+        if (fp == NULL) {
+            ROS_ERROR("Failed to open file.");
+            return;
+        }
+        
+        char buff[1024] = {0};
+        if (fgets(buff, sizeof(buff), fp) == NULL) {
+            ROS_ERROR("Failed to read from file.");
+            fclose(fp);
+            return;
+        }
+        fclose(fp);
+        // 使用stringstream来分割字符串
+        std::stringstream ss(buff);
+        float keep_deg, speed, keep_z;
+
+        // 从stringstream中读取三个浮点数
+        if (!(ss >> keep_deg >> speed >> keep_z)) {
+            ROS_ERROR("Failed to parse parameters from file.");
+            return;
+        }
+        std::cout << url << std::endl;
+        std::cout << keep_deg << std::endl;
+        std::cout << speed << std::endl;
+        std::cout << keep_z << std::endl;
+        threads->set_follow_param(url, keep_deg, speed, keep_z);
+        threads->set_follow_en();   
     }
 
     void UavButton::return_home_callback() {
@@ -612,9 +750,18 @@ namespace rviz_drone_control{
             }
         }
         else if(launch_en_){
+            std::cout << waypoints_flag << std::endl;
             // 定义服务响应类型
             // 创建航点清除服务的响应对象
             mavros_msgs::WaypointClear srv;
+
+            // if(waypoints_flag == 0) {
+            //     std::cout << "" << std::endl;
+            //     url = url_1 + "/api/fly_mission?id=";
+            //     threads->set_mission_param(url, uav_id_num_, x_lat, y_long);
+            //     threads->set_mission_en();
+            //     launch_en_ = false;
+            // }
 
             if(waypoints_flag == 0) {
                 // 调用清除航点服务
@@ -732,6 +879,7 @@ namespace rviz_drone_control{
             }
 
             if(waypoints_flag == 2) {
+                waypoints_flag = 3;
                 // 1. 设置飞行模式为定点模式
                 if (current_state.mode != "POSCTL") {
                     offb_set_mode.request.custom_mode = "POSCTL";
@@ -858,7 +1006,7 @@ namespace rviz_drone_control{
 
             // // 调用set_rect函数，这里假设UavButton对象的指针或引用可用
             // threads->set_rect(url, x1, y1, width, height);
-            url = "http://192.168.144.18:7080/api/set_rect";
+            url = url_0 + "/api/set_rect";
             threads->set_rect_param(url, x1, y1, width, height);
             threads->set_rect_en();
         }
@@ -871,6 +1019,9 @@ namespace rviz_drone_control{
         set_pitch_en_ = false;
         set_track_drve_en_ = false;
         strike_flag_ = 0;
+        set_yaw_en_ = false;
+        set_follow_en_ = false;
+        set_mission_en_ = false;
     }
 
     void BackgroundWorker::run(){
@@ -901,6 +1052,21 @@ namespace rviz_drone_control{
                 track_dive(url_, speed_);
                 set_track_drve_en_=false;
                 std::cout << "set_track_drve clean!" << std::endl;
+            }
+            else if(set_yaw_en_) {
+                set_yaw(url_, yaw_);
+                set_yaw_en_=false;
+                std::cout << "set_cloud_yaw clean!" << std::endl;
+            }
+            else if(set_follow_en_) {
+                follow(url_, keep_deg_, speed_, keep_z_);
+                set_follow_en_=false;
+                std::cout << "set_follow clean!" << std::endl;
+            }
+            else if(set_mission_en_) {
+                set_mission(url_, uav_id_, lat_, lon_);
+                set_mission_en_=false;
+                std::cout << "set_follow clean!" << std::endl;
             }
         }
     }
@@ -1001,8 +1167,43 @@ namespace rviz_drone_control{
         return 0;
     }
 
+    int BackgroundWorker::set_yaw(const std::string& url, int yaw) {
+        // std::string url = "http://192.168.144.18:7081/api/set_cloud_pitch?degree=" + std::to_string(pitch);
+        std::cout << "url: " << url << std::endl;
+        std::string result = send_http_post(url_, "");
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
+    }
+
     int BackgroundWorker::track_dive(const std::string& url, int speed) {
         // std::string url = "http://192.168.144.18:7081/api/track_dive?speed=" + std::to_string(speed);
+        std::string result = send_http_post(url_, "");
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    int BackgroundWorker::follow(const std::string& url, float keep_deg, float speed, float keep_z){
+                // std::string url = "http://192.168.144.18:7081/api/follow?keep_deg=" + std::to_string(keep_deg) + "&speed=" + to_string(speed) + "&keep_z" + to_string(keep_z);
+        std::cout << "url_: " << url_ << std::endl;
+        std::string result = send_http_post(url_, "");
+        std::cout << "result: " << result << std::endl;
+        if (result.empty())
+        {
+            return -1;
+        }
+        return 0;
+    }
+
+    int BackgroundWorker::set_mission(const std::string& url, int uav_id, float lat, float lon) {
+        std::cout << "url_: " << url_ << std::endl;
         std::string result = send_http_post(url_, "");
         std::cout << "result: " << result << std::endl;
         if (result.empty())
@@ -1035,12 +1236,39 @@ namespace rviz_drone_control{
 
     void BackgroundWorker::set_cloud_pitch_param(const std::string& url, int pitch) {
         url_ = url + std::to_string(pitch);
+        std::cout << url_ << std::endl;
         pitch_ = pitch;
     }
 
     void BackgroundWorker::set_track_drve_param(const std::string& url, int speed) {
         url_ = url + std::to_string(speed);
         speed_ = speed;
+        std::cout << url_ << std::endl;
+    }
+
+    void BackgroundWorker::set_follow_param(const std::string& url, float keep_deg, float speed, float keep_z) {
+        // std::string url = "http://192.168.144.18:7081/api/follow?keep_deg=" + std::to_string(keep_deg) + "&speed=" + to_string(speed) + "&keep_z" + to_string(keep_z);
+        url_ = url + std::to_string(keep_deg) + "&speed=" + std::to_string(speed) + "&keep_z=" + std::to_string(keep_z);
+        std::cout << url_ << std::endl;
+        keep_deg_ = keep_deg;
+        speed_ = speed;
+        keep_z_ = keep_z;
+
+    }
+
+    void BackgroundWorker::set_yaw_param(const std::string& url, int yaw) {
+        url_ = url + std::to_string(yaw_);
+        std::cout << url_ << std::endl;
+        yaw_ = yaw;
+    }
+
+    void BackgroundWorker::set_mission_param(const std::string& url, int uav_id, float lat, float lon) {
+        // std::string url = "http://192.168.144.18:7081/api/follow?keep_deg=" + std::to_string(keep_deg) + "&speed=" + to_string(speed) + "&keep_z" + to_string(keep_z);
+        url_ = url + std::to_string(uav_id) + "&lat=" + std::to_string(lat) + "&lon=" + std::to_string(lon);
+        std::cout << url_ << std::endl;
+        uav_id_ = uav_id;
+        lat_ = lat;
+        lon_ = lon;
     }
 
     void BackgroundWorker::set_obj_en() {
@@ -1067,6 +1295,21 @@ namespace rviz_drone_control{
         set_track_drve_en_ = true;
         std::cout << "set_track_drve enable!" << std::endl;
     }    
+
+    void BackgroundWorker::set_follow_en() {
+        set_follow_en_ = true;
+        std::cout << "set_follow enable!" << std::endl;
+    }    
+
+    void BackgroundWorker::set_yaw_en() {
+        set_yaw_en_ = true;
+        std::cout << "set_cloud_yaw enable!" << std::endl;
+    }
+
+    void BackgroundWorker::set_mission_en() {
+        set_mission_en_ = true;
+        std::cout << "set_mission enable!" << std::endl;
+    }
 
 }
 #include <pluginlib/class_list_macros.h>

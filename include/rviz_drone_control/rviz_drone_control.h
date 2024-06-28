@@ -56,11 +56,17 @@ namespace rviz_drone_control{
         void set_clean_param(const std::string& url);
         void set_cloud_pitch_param(const std::string& url, int pitch);
         void set_track_drve_param(const std::string& url, int speed);
+        void set_follow_param(const std::string& url, float keep_deg, float speed, float keep_z);
+        void set_yaw_param(const std::string& url, int yaw);
+        void set_mission_param(const std::string& url, int uav_id, float lat, float lon);
         void set_obj_en();
         void set_rect_en();
         void set_clean_en();
         void set_pitch_en();
         void set_track_drve_en();
+        void set_follow_en();
+        void set_yaw_en();
+        void set_mission_en();
         Requst ParseUrl(const std::string& url);
         int HttpPost(const std::string& url, const std::string& body, std::string& result);
         std::string send_http_post(const std::string& url, const std::string& body);
@@ -70,26 +76,43 @@ namespace rviz_drone_control{
         std::string get_track_rect(const std::string& url);
         int set_cloud_pitch(const std::string& url, int pitch);
         int track_dive(const std::string& url, int speed);
+        int follow(const std::string& url, float keep_deg, float speed, float keep_z);
+        int set_yaw(const std::string& url, int yaw);
+        int set_mission(const std::string& url, int uav_id, float lat, float lon);
+        // int set_mission(const std::string& url, int uav_id);
 
     private:
         std::string url_;
         int id_;
         int x_, y_, width_, height_;
+        float keep_deg_, keep_z_;
         bool set_obj_en_;
         bool set_rect_en_;
         bool set_clean_en_;
         bool set_pitch_en_;
+        bool set_yaw_en_;
         bool set_track_drve_en_;
+        bool set_follow_en_;
+        bool set_mission_en_;
 
         int strike_flag_;
 
+        int yaw_;
         int pitch_;
         int speed_;
+
+        float lat_;
+        float lon_;
+
+        int uav_id_;
     };
 
     class UavButton :public QWidget{
         Q_OBJECT
     public:
+        std::string url;
+        std::string url_0;
+        std::string url_1;
         UavButton(ros::NodeHandle* nh, QWidget *parent = nullptr,  const QString& id = QString("uav0")); // 构造函数
         QHBoxLayout* get_layout();
         QWidget* get_button_widget();
@@ -107,6 +130,7 @@ namespace rviz_drone_control{
         void strike_callback();
         void strike_clean_callback();
         void track_callback();
+        void follow_callback();
         void return_home_callback();
         void land_callback();
 
@@ -125,6 +149,7 @@ namespace rviz_drone_control{
         QPushButton *strike_button_;
         QPushButton *strike_clean_button_;
         QPushButton *track_button_;
+        QPushButton *follow_button_;
         QLineEdit *return_home_edit_;
         QPushButton *return_home_button_;
         QPushButton *land_button_;
@@ -141,6 +166,7 @@ namespace rviz_drone_control{
         bool launch_en_ = false;
         bool strike_en_ = false;
         bool track_en_ = false;
+        bool follow_en_ = false;
         bool return_home_en_ = false;
         bool land_en_ = false;
         
@@ -148,14 +174,23 @@ namespace rviz_drone_control{
 
         double return_home_alt_;
         int strike_id_;
-        std::string url;
+
+        std::string uav_id_;
+        int uav_id_num_;
+
+        std::string url_prefix;
+        std::string url_suffix;
+        int last_part_of_ip;
+        int port_0;
+        int port_1;
+        int port_2;
+
 
         ros::Subscriber mavros_state_sub_;
         ros::Subscriber mavros_home_sub_;
         ros::Subscriber dji_position_sub_;
 
-        std::string uav_id_;
-        int uav_id_num_;
+
         mavros_msgs::State current_state;
         mavros_msgs::HomePosition home_position;
         geometry_msgs::TwistStamped current_velocity;
@@ -180,6 +215,8 @@ namespace rviz_drone_control{
         RvizDroneControl(QWidget *parent = 0);
         virtual void load(const rviz::Config &config);
         virtual void save(rviz::Config config) const;
+        std::string uav_select_;
+        
     protected Q_SLOTS:
         void test_callback();
         void test2_callback();
@@ -218,9 +255,8 @@ namespace rviz_drone_control{
         UavButton *uav2_buttons_;
         QComboBox *uav_combo_box_; // 新增的无人机选择框
 
-        std::string uav_select_;
-
         int pitch_;
+        int yaw_;
     };
 }
 
