@@ -173,8 +173,7 @@ namespace rviz_drone_control{
         ROS_INFO("start");
 	
         uav2_buttons_->set_launch_en();
-        // uav0_buttons_->set_launch_en();
-        sleep(5);
+        sleep(10);
         uav1_buttons_->set_launch_en();
 
         ROS_INFO("uav1 started");
@@ -466,17 +465,23 @@ namespace rviz_drone_control{
     }
 
     void UavButton::set_launch_en() {
-        // launch_en_ = true;
-        mission_alt_ = 20 + uav_id_num_ * 10;
+        if(uav_id_num_ == 1) {
+            mission_alt_ = 35;
+        }
+        if(uav_id_num_ == 2) {
+            mission_alt_ = 25;
+        }
+        // mission_alt_ = 15 + uav_id_num_ * 10;
+        launch_en_ = true;
 
-        float x_lat = 23.19659346083342;
-        float y_long = 112.58319910766468;
+        // float x_lat = 23.19659346083342;
+        // float y_long = 112.58319910766468;
 
-        std::cout << "" << std::endl;
-        url = url_1 + "/api/fly_mission?id=";
-        threads->set_mission_param(url, uav_id_num_, x_lat, y_long);
-        threads->set_mission_en();
-        launch_en_ = false;
+        // std::cout << "" << std::endl;
+        // url = url_1 + "/api/fly_mission?id=";
+        // threads->set_mission_param(url, uav_id_num_, x_lat, y_long);
+        // threads->set_mission_en();
+        // launch_en_ = false;
     }
 
     void UavButton::takeoff_callback() {
