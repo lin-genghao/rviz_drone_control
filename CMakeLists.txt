@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rviz
   mavros
   mavros_msgs
+  libmavconn
 )
 
 catkin_package(

@@ -32,34 +32,35 @@ namespace rviz_drone_control{
         test2_pub_ = nh_.advertise<std_msgs::String>("test2_topic",10);
 
         // 创建UavButton实例
-        uav0_buttons_ = new UavButton(&nh_, this, "uav0");
+        // uav0_buttons_ = new UavButton(&nh_, this, "uav0");
         uav1_buttons_ = new UavButton(&nh_, this, "uav1");
         uav2_buttons_ = new UavButton(&nh_, this, "uav2");
 
-        uav0_buttons_->set_Visible(true);
+        // uav0_buttons_->set_Visible(false);
         uav1_buttons_->set_Visible(true);
         uav2_buttons_->set_Visible(true);
 
-        QWidget* uav0_widget = uav0_buttons_->get_button_widget();
+        // QWidget* uav0_widget = uav0_buttons_->get_button_widget();
         QWidget* uav1_widget = uav1_buttons_->get_button_widget();
         QWidget* uav2_widget = uav2_buttons_->get_button_widget();
 
         // 为每个UavButton创建垂直布局
-        QVBoxLayout *uav0_layout = new QVBoxLayout;
+        // QVBoxLayout *uav0_layout = new QVBoxLayout;
         QVBoxLayout *uav1_layout = new QVBoxLayout;
         QVBoxLayout *uav2_layout = new QVBoxLayout;
 
         // 将UavButton的按钮添加到相应的布局中
-        uav0_layout->addWidget(uav0_widget);
+        // uav0_layout->addWidget(uav0_widget);
         uav1_layout->addWidget(uav1_widget);
         uav2_layout->addWidget(uav2_widget);
 
         // 创建无人机选择框并初始化
         uav_combo_box_ = new QComboBox(this);
+        uav_combo_box_->setFixedSize(600, 50);
         uav_combo_box_->addItem("None");
         uav_combo_box_->addItem("UAV 1");
         uav_combo_box_->addItem("UAV 2");
-        uav_combo_box_->addItem("UAV 3");
+        // uav_combo_box_->addItem("UAV 3");
 
         // 将无人机选择框添加到主布局
         button_layout->addWidget(uav_combo_box_);
@@ -75,6 +76,7 @@ namespace rviz_drone_control{
         start_button_ = new QPushButton(tr("start"), this);
         connect(start_button_,SIGNAL(clicked()),this,SLOT(start_callback()));
         all_function_layout->addWidget(start_button_);
+        start_button_->setFixedSize(600, 50);
 
         button_layout->addLayout(all_function_layout);
 
@@ -150,10 +152,10 @@ namespace rviz_drone_control{
         turn_left_button->setVisible(true);
         turn_right_button->setVisible(true);
         down_button->setVisible(true);
-        front_button->setVisible(false);
-        left_button->setVisible(false);
-        right_button->setVisible(false);
-        back_button->setVisible(false);
+        front_button->setVisible(true);
+        left_button->setVisible(true);
+        right_button->setVisible(true);
+        back_button->setVisible(true);
 
         button_layout->addLayout(button_move);
 
@@ -168,34 +170,33 @@ namespace rviz_drone_control{
         connect(right_button,SIGNAL(clicked()),this,SLOT(right_callback()));
 
         pitch_ = 0;
+        yaw_ = 0;
     }
     void RvizDroneControl::start_callback() {
         ROS_INFO("start");
 	
+        uav2_buttons_->time_start = ros::Time::now();
+        uav2_buttons_->mission_alt_ = 25;
+        uav2_buttons_->launch_delay_ = 0;
         uav2_buttons_->set_launch_en();
-        sleep(10);
-        uav1_buttons_->set_launch_en();
+        ROS_INFO("uav2 start");
 
-        ROS_INFO("uav1 started");
-        ROS_INFO("uav2 started");
+        uav1_buttons_->time_start = ros::Time::now();
+        uav1_buttons_->mission_alt_ = 35;
+        uav1_buttons_->launch_delay_ = 10;
+        uav1_buttons_->set_launch_en();
+        ROS_INFO("uav1 start");
     }  
     void RvizDroneControl::up_callback() {
         ROS_INFO("up, %s", uav_select_.c_str());
-        std::string url;
+        // std::string url;
         if(uav_select_ == "/uav1") {
             ROS_INFO("uav1 up");
-            url = uav1_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
-            pitch_=-5;
-            uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
-            uav1_buttons_->threads->set_pitch_en();
+            uav1_buttons_->send_reposition_command(0, 0, 5, 0);
         }
         if(uav_select_ == "/uav2") {
-            url = uav2_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
-            pitch_=-5;
-            uav2_buttons_->threads->set_cloud_pitch_param(url, pitch_);
-            uav2_buttons_->threads->set_pitch_en();
+            uav2_buttons_->send_reposition_command(0, 0, 5, 0);
         }
-
     }
     void RvizDroneControl::turn_left_callback() {
         ROS_INFO("left, %s", uav_select_.c_str());
@@ -204,14 +205,12 @@ namespace rviz_drone_control{
             ROS_INFO("uav1 left");
             url = uav1_buttons_->url_1 + "/api/rotation?degree=";
             yaw_=10;
-            uav1_buttons_->threads->set_yaw_param(url, yaw_);
-            uav1_buttons_->threads->set_yaw_en();
+            uav1_buttons_->send_reposition_command(0, 0, 0, -5.0);
         }
         if(uav_select_ == "/uav2") {
             url = uav2_buttons_->url_1 + "/api/rotation?degree=";
             yaw_=10;
-            uav2_buttons_->threads->set_yaw_param(url, yaw_);
-            uav2_buttons_->threads->set_yaw_en();
+            uav2_buttons_->send_reposition_command(0, 0, 0, -5.0);
         }
     }
     void RvizDroneControl::turn_right_callback() {
@@ -221,44 +220,63 @@ namespace rviz_drone_control{
             ROS_INFO("uav1 right");
             url = uav1_buttons_->url_1 + "/api/rotation?degree=";
             yaw_=-10;
-            uav1_buttons_->threads->set_yaw_param(url, yaw_);
-            uav1_buttons_->threads->set_yaw_en();
+            uav1_buttons_->send_reposition_command(0, 0, 0, 5.0);
         }
         if(uav_select_ == "/uav2") {
             url = uav2_buttons_->url_1 + "/api/rotation?degree=";
             yaw_=-10;
-            uav2_buttons_->threads->set_yaw_param(url, yaw_);
-            uav2_buttons_->threads->set_yaw_en();
+            uav2_buttons_->send_reposition_command(0, 0, 0, 5.0);
         }
     }
     void RvizDroneControl::down_callback() {
         ROS_INFO("down");
-        std::string url;
-
+        // std::string url;
         if(uav_select_ == "/uav1") {
-            url = uav1_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
-            pitch_=5;
-            uav1_buttons_->threads->set_cloud_pitch_param(url, pitch_);
-            uav1_buttons_->threads->set_pitch_en();
+            uav1_buttons_->send_reposition_command(0, 0, -5, 0);
         }
         if(uav_select_ == "/uav2") {
-            url = uav2_buttons_->url_1 + "/api/set_cloud_pitch?degree=";
-            pitch_=5;
-            uav2_buttons_->threads->set_cloud_pitch_param(url, pitch_);
-            uav2_buttons_->threads->set_pitch_en();
+            uav1_buttons_->send_reposition_command(0, 0, -5, 0);
         }
     }
     void RvizDroneControl::front_callback() {
-
+        ROS_INFO("front, %s", uav_select_.c_str());
+        std::string url;
+        if(uav_select_ == "/uav1") {
+            uav1_buttons_->send_reposition_command(10, 0, 0, 0);
+        }
+        if(uav_select_ == "/uav2") {
+            uav2_buttons_->send_reposition_command(10, 0, 0, 0);
+        }
     }
     void RvizDroneControl::left_callback() {
-
+        ROS_INFO("left, %s", uav_select_.c_str());
+        std::string url;
+        if(uav_select_ == "/uav1") {
+            uav1_buttons_->send_reposition_command(0, 10, 0, 0);
+        }
+        if(uav_select_ == "/uav2") {
+            uav2_buttons_->send_reposition_command(0, 10, 0, 0);
+        }
     }
     void RvizDroneControl::right_callback() {
-
+        ROS_INFO("left, %s", uav_select_.c_str());
+        std::string url;
+        if(uav_select_ == "/uav1") {
+            uav1_buttons_->send_reposition_command(0, -10, 0, 0);
+        }
+        if(uav_select_ == "/uav2") {
+            uav2_buttons_->send_reposition_command(0, -10, 0, 0);
+        }
     }
     void RvizDroneControl::back_callback() {
-
+        ROS_INFO("back, %s", uav_select_.c_str());
+        std::string url;
+        if(uav_select_ == "/uav1") {
+            uav1_buttons_->send_reposition_command(-10, 0, 0, 0);
+        }
+        if(uav_select_ == "/uav2") {
+            uav2_buttons_->send_reposition_command(-10, 0, 0, 0);
+        }
     }
     void RvizDroneControl::initManualControlPublisher() {
         // 根据当前的uav_select_创建或重新初始化发布者
@@ -352,14 +370,21 @@ namespace rviz_drone_control{
         return_home_edit_->setText("None");
         return_home_alt_ = 0;
 
-        return_home_button_ = new QPushButton(tr("返航"), parent);
+        return_home_button_ = new QPushButton(tr("return home"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
+
+        auto *gimbal_layout = new QVBoxLayout;
+        QPushButton* gimbal_up_button = new QPushButton(tr("g up"), parent);
+        QPushButton* gimbal_down_button = new QPushButton(tr("g down"), parent);
+        gimbal_layout->addWidget(gimbal_up_button);
+        gimbal_layout->addWidget(gimbal_down_button);
 
         mission_alt_edit_->setVisible(false);
         launch_button_->setVisible(false);
         takeoff_button_->setVisible(false);
         return_home_edit_->setVisible(false);
         return_home_button_->setVisible(true);
+        land_button_->setVisible(false);
 
         // // 为按钮创建水平布局
         layout_ = new QHBoxLayout;
@@ -373,10 +398,17 @@ namespace rviz_drone_control{
         layout_->addWidget(strike_clean_button_);
         layout_->addWidget(return_home_edit_);
         layout_->addWidget(return_home_button_);
+        layout_->addLayout(gimbal_layout);
         // layout_->addWidget(land_button_);
+        strike_id_edit_->setFixedSize(75, 50);
+        strike_button_->setFixedSize(75, 50);
+        track_button_->setFixedSize(75, 50);
+        follow_button_->setFixedSize(75, 50);
+        strike_clean_button_->setFixedSize(75, 50);
+        return_home_button_->setFixedSize(75, 50);
 
         group_box_->setLayout(layout_);
-
+        // group_box_->layout()->setSizeConstraint(QLayout::SetFixedSize);
         group_box_->setVisible(false);
 
         // 连接按钮信号到槽函数
@@ -388,6 +420,8 @@ namespace rviz_drone_control{
         connect(follow_button_, SIGNAL(clicked()), this, SLOT(follow_callback()));
         connect(return_home_button_, SIGNAL(clicked()), this, SLOT(return_home_callback()));
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
+        connect(gimbal_up_button, SIGNAL(clicked()), this, SLOT(gimbal_up_callback()));
+        connect(gimbal_down_button, SIGNAL(clicked()), this, SLOT(gimbal_down_callback()));
 
         id_string = id.toStdString();
         if (!id_string.empty() && std::isdigit(id_string.back())) {
@@ -423,11 +457,12 @@ namespace rviz_drone_control{
         follow_en_ = false;
         return_home_en_ = false;
         land_en_ = false;
-        
+        launch_delay_ = 0;
         waypoints_flag = 0;
 
         // 服务的客户端（设定无人机的模式、状态）
         arming_client = nh_.serviceClient<mavros_msgs::CommandBool>(id_string + "/mavros/cmd/arming");
+        command_client_ = nh_.serviceClient<mavros_msgs::CommandLong>(id_string + "/mavros/cmd/command");
         set_mode_client = nh_.serviceClient<mavros_msgs::SetMode>(id_string + "/mavros/set_mode");
         param_get_client_ = nh_.serviceClient<mavros_msgs::ParamGet>(id_string + "/mavros/param/get");
         param_set_client_ = nh_.serviceClient<mavros_msgs::ParamSet>(id_string + "/mavros/param/set");
@@ -435,6 +470,8 @@ namespace rviz_drone_control{
         param_push_client_ = nh_.serviceClient<mavros_msgs::ParamPush>(id_string + "/mavros/param/push");
 
         mavros_state_sub_ = nh_.subscribe<mavros_msgs::State>(id_string + "/mavros/state", 10, &UavButton::mavrosStateCallback, this);
+        mavros_gps_sub_ = nh_.subscribe<mavros_msgs::GPSRAW>(id_string + "/mavros/gpsstatus/gps1/raw", 10, &UavButton::mavrosGPSCallback, this);
+        mavros_compass_sub_ = nh_.subscribe<std_msgs::Float64>(id_string + "/mavros/global_position/compass_hdg", 10, &UavButton::mavrosCompassCallback, this);
         mavros_home_sub_ = nh_.subscribe<mavros_msgs::HomePosition>(id_string + "/mavros/home_position/home", 10, &UavButton::mavrosHomeCallback, this);
 
         dji_position_sub_ = nh_.subscribe<sensor_msgs::NavSatFix>("/dji/gps", 10, &UavButton::djiPositionCallBack, this);
@@ -465,13 +502,6 @@ namespace rviz_drone_control{
     }
 
     void UavButton::set_launch_en() {
-        if(uav_id_num_ == 1) {
-            mission_alt_ = 35;
-        }
-        if(uav_id_num_ == 2) {
-            mission_alt_ = 25;
-        }
-        // mission_alt_ = 15 + uav_id_num_ * 10;
         launch_en_ = true;
 
         // float x_lat = 23.19659346083342;
@@ -544,6 +574,7 @@ namespace rviz_drone_control{
         // clean_obj(url);
         threads->set_clean_param(url);
         threads->set_clean_en();
+        send_reposition_command(0, 0, 0, 0);
     }
 
     void UavButton::track_callback() {
@@ -637,6 +668,88 @@ namespace rviz_drone_control{
         land_pub_.publish(empty_msg);
     }
 
+    void UavButton::gimbal_up_callback() {
+        std::string url;
+        url = url_1 + "/api/set_cloud_pitch?degree=";
+        gimbal_pitch_ = -5;
+        threads->set_cloud_pitch_param(url, gimbal_pitch_);
+        threads->set_pitch_en();
+    }
+
+    void UavButton::gimbal_down_callback() {
+        std::string url;
+        url = url_1 + "/api/set_cloud_pitch?degree=";
+        gimbal_pitch_ = 5;
+        threads->set_cloud_pitch_param(url, gimbal_pitch_);
+        threads->set_pitch_en();
+    }
+
+    void UavButton::send_reposition_command(double x, double y, double z, double yaw) {
+        using mavlink::common::MAV_CMD;
+        bool flag = false;
+
+        // 3. 设置飞行模式为等待模式
+        if (current_state.mode != "AUTO.LOITER") {
+            offb_set_mode.request.custom_mode = "AUTO.LOITER";
+            if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
+                ROS_INFO("LOITER mode enabled");
+            } else {
+                ROS_ERROR("Failed to set LOITER mode");
+                return; // 如果无法设置模式，则退出函数
+            }
+        }
+
+        double current_yaw_rad = current_yaw * (M_PI / 180.0);
+        ROS_INFO("current_yaw_rad : %lf", current_yaw_rad);
+
+        // 假设 x 和 y 是相对于当前偏航角的方向和侧向移动的距离，单位为米
+        double distance_x = x * 0.00001 * cos(current_yaw_rad) + y * 0.00001 * sin(current_yaw_rad);
+        double distance_y = x * 0.00001 * sin(current_yaw_rad) - y * 0.00001 * cos(current_yaw_rad);
+        ROS_INFO("distance_x : %lf", distance_x);
+        ROS_INFO("distance_y : %lf", distance_y);
+
+        // 将本地坐标系中的偏移量转换为经纬度坐标系中的偏移量
+        double delta_lat = distance_x;
+        double delta_long = distance_y;
+
+        // 更新目标经纬度
+        double target_lat = current_lat + delta_lat;
+        double target_long = current_long + delta_long;
+
+        // 确保经纬度在合法范围内
+        target_lat = fmax(fmin(target_lat, 90.0), -90.0);
+        target_long = fmax(fmin(target_long, 180.0), -180.0);
+
+        command_.request.broadcast = false;
+        command_.request.command = mavros::utils::enum_value(MAV_CMD::DO_REPOSITION);
+        command_.request.confirmation = 0;
+        command_.request.param1 = 0; //speed
+        command_.request.param2 = 0; 
+        command_.request.param3 = 0; 
+        command_.request.param4 = (current_yaw + yaw) * M_PI / 180; 
+        command_.request.param5 = target_lat; // 转换回度
+        command_.request.param6 = target_long; // 转换回度
+        command_.request.param7 = current_alt + z; 
+        ROS_INFO("%s current lat: %f\t lon: %f\t alt: %f",id_string.c_str(), current_lat, current_long, current_alt);
+        ROS_INFO("%s target lat: %f\t lon: %f\t alt: %f",id_string.c_str(), command_.request.param5, command_.request.param6, command_.request.param7);
+
+
+        try {
+
+            flag = command_client_.call(command_);
+
+            if(flag) {
+                ROS_INFO("Service call successful, result: %d", command_.response.result);
+            } else {
+                ROS_ERROR("Service call failed,  result: %d", command_.response.result);
+            }
+        }
+		catch (ros::InvalidNameException &ex) {
+			ROS_ERROR_NAMED("command", "command: %s", ex.what());
+		}
+
+    }
+
     double UavButton::paramGet(std::string param_str){
         mavros_msgs::ParamGet srv;
         srv.request.param_id = param_str;
@@ -691,11 +804,13 @@ namespace rviz_drone_control{
                     ROS_ERROR("Failed to set parameter: %s", param_str.c_str());
                     // 处理错误情况，例如返回一个默认值或抛出异常
                     // throw std::runtime_error("Parameter set service call failed.");
+                    return NAN;
                 }
             } else {
                 ROS_ERROR("Service call failed: /%s/mavros/param/get", id_string.c_str());
                 // 处理错误情况，例如返回一个默认值或抛出异常
                 // throw std::runtime_error("Service call to /mavros/param/get failed.");
+                return NAN;
             }
         } catch (const std::runtime_error& e) {
             // 捕获异常并记录错误信息
@@ -770,9 +885,17 @@ namespace rviz_drone_control{
             // }
 
             if(waypoints_flag == 0) {
+                time_now = ros::Time::now();
+                ROS_INFO("now: %f", time_now.toSec());
+                if(time_now.toSec() - time_start.toSec() > launch_delay_) {
+                    waypoints_flag = 1;
+                }
+            }
+
+            if(waypoints_flag == 1) {
                 // 调用清除航点服务
                 if (ros::service::call(id_string + "/mavros/mission/clear", srv)) {
-                    waypoints_flag = 1;
+                    waypoints_flag = 2;
                     ROS_INFO("Waypoints cleared successfully before launch.");
 
                 } else {
@@ -781,7 +904,7 @@ namespace rviz_drone_control{
                 }
             }
 
-            if(waypoints_flag == 1) {
+            if(waypoints_flag == 2) {
                 // 创建航点列表
                 std::vector<mavros_msgs::Waypoint> waypoints;
 
@@ -877,20 +1000,20 @@ namespace rviz_drone_control{
                 wp_push.request.waypoints = waypoints;
 
                 if (ros::service::call(id_string + "/mavros/mission/push", wp_push)) {
-                    waypoints_flag = 2;
+                    waypoints_flag = 3;
                     ROS_INFO("Waypoints pushed successfully.");
                 } else {
                     ROS_ERROR("Failed to push waypoints.");
                 }
             }
 
-            if(waypoints_flag == 2) {
-                waypoints_flag = 3;
+            if(waypoints_flag == 3) {
+                // waypoints_flag = 4;
                 // 1. 设置飞行模式为定点模式
                 if (current_state.mode != "POSCTL") {
                     offb_set_mode.request.custom_mode = "POSCTL";
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        waypoints_flag = 3;
+                        waypoints_flag = 4;
                         ROS_INFO("POSCTL mode enabled");
 
                     } else {
@@ -898,28 +1021,36 @@ namespace rviz_drone_control{
                         return; // 如果无法设置模式，则退出函数
                     }
                 }
+                else {
+                    waypoints_flag = 4;
+                    ROS_INFO("POSCTL mode enabled");     
+                }
             }
 
-            if(waypoints_flag == 3) {
+            if(waypoints_flag == 4) {
                 // 2. 确保无人机连接并处于正确的模式
                 if (!current_state.armed) {
                     // 3. 发布ARM命令
                     if (arming_client.call(arm_cmd) && arm_cmd.response.success) {
-                        waypoints_flag = 4;
+                        waypoints_flag = 5;
                         ROS_INFO("Vehicle armed");
                     } else {
                         ROS_ERROR("Failed to arm vehicle");
                         return; // 如果无法武装无人机，则退出函数
                     }
                 }
+                else {
+                    waypoints_flag = 5;
+                    ROS_INFO("Vehicle armed");
+                }
             }
 
-            if(waypoints_flag == 4) {
+            if(waypoints_flag == 5) {
                 // 3. 设置飞行模式为起飞模式
                 if (current_state.mode != "AUTO.TAKEOFF") {
                     offb_set_mode.request.custom_mode = "AUTO.TAKEOFF";
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
-                        waypoints_flag = 5;
+                        waypoints_flag = 6;
                         ROS_INFO("TAKEOFF mode enabled");
                     } else {
                         ROS_ERROR("Failed to set TAKEOFF mode");
@@ -928,7 +1059,7 @@ namespace rviz_drone_control{
                 }
             }
 
-            if(waypoints_flag == 5) {
+            if(waypoints_flag == 6) {
                 // 3. 设置飞行模式为任务模式
                 if (current_state.mode != "AUTO.MISSION") {
                     offb_set_mode.request.custom_mode = "AUTO.MISSION";
@@ -981,6 +1112,18 @@ namespace rviz_drone_control{
         // ROS_INFO("%s home lat: %f\t lon: %f\t alt: %f",id_string.c_str(), home_position.geo.latitude, home_position.geo.longitude, home_position.position.z);
     }
 
+    void UavButton::mavrosGPSCallback(const mavros_msgs::GPSRAW::ConstPtr &msg) {
+        current_lat = msg->lat / 1e7;
+        current_long = msg->lon / 1e7;
+        current_alt = msg->alt / 1e3;
+        // ROS_INFO("%s current lat: %f\t lon: %f\t alt: %f",id_string.c_str(), current_lat, current_long, current_alt);
+    }
+
+    void UavButton::mavrosCompassCallback(const std_msgs::Float64::ConstPtr &msg) {
+        current_yaw = msg->data;
+        // ROS_INFO("%s current compass: %f\t",id_string.c_str(), current_yaw);
+
+    }
     // 位置回调函数
     // void UavButton::LocalPoseCallBack(const geometry_msgs::PoseStamped::ConstPtr &msg) {
         
@@ -1028,6 +1171,8 @@ namespace rviz_drone_control{
         set_yaw_en_ = false;
         set_follow_en_ = false;
         set_mission_en_ = false;
+        yaw_ = 0;
+        pitch_ = 0;
     }
 
     void BackgroundWorker::run(){
@@ -1259,11 +1404,10 @@ namespace rviz_drone_control{
         keep_deg_ = keep_deg;
         speed_ = speed;
         keep_z_ = keep_z;
-
     }
 
     void BackgroundWorker::set_yaw_param(const std::string& url, int yaw) {
-        url_ = url + std::to_string(yaw_);
+        url_ = url + std::to_string(yaw);
         std::cout << url_ << std::endl;
         yaw_ = yaw;
     }

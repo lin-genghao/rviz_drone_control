@@ -12,12 +12,16 @@
 #include <QObject>
 #include <std_msgs/Empty.h>
 #include <std_msgs/String.h>
+#include <std_msgs/Float64.h>
+#include <mavros/mavros_plugin.h>
 #include <mavros_msgs/State.h> // 假设消息类型为mavros_msgs/State
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/HomePosition.h>
 #include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/CommandLong.h>
 #include <mavros_msgs/Waypoint.h>
 #include <mavros_msgs/CommandCode.h>
+#include <mavros_msgs/GPSRAW.h>
 #include <mavros_msgs/WaypointPush.h>
 #include <mavros_msgs/WaypointClear.h>
 #include <mavros_msgs/ManualControl.h>
@@ -25,6 +29,7 @@
 #include <mavros_msgs/ParamSet.h>
 #include <mavros_msgs/ParamPull.h>
 #include <mavros_msgs/ParamPush.h>
+#include <mavros_msgs/MessageInterval.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Twist.h>
@@ -118,11 +123,16 @@ namespace rviz_drone_control{
         QWidget* get_button_widget();
         void set_Visible(bool visible);
 
+        void send_reposition_command(double x, double y, double z, double yaw);
         double paramGet(std::string param_str);
         double paramSet(std::string param_str, double vaule);
         BackgroundWorker* threads;
 
         void set_launch_en();
+        double mission_alt_;
+        int launch_delay_;
+        ros::Time time_start;
+        ros::Time time_now;
 
     protected Q_SLOTS:
         void takeoff_callback();
@@ -133,17 +143,20 @@ namespace rviz_drone_control{
         void follow_callback();
         void return_home_callback();
         void land_callback();
+        void gimbal_up_callback();
+        void gimbal_down_callback();
 
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
         void mavrosHomeCallback(const mavros_msgs::HomePosition::ConstPtr &msg);
+        void mavrosGPSCallback(const mavros_msgs::GPSRAW::ConstPtr &msg);
+        void mavrosCompassCallback(const std_msgs::Float64::ConstPtr &msg);
         void LocalPoseCallBack(const geometry_msgs::PoseStamped::ConstPtr &msg);
         void djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg);
         void boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg);
-
+        
     private:
         QPushButton *takeoff_button_;
         QLineEdit *mission_alt_edit_;
-        double mission_alt_;
         QPushButton *launch_button_;
         QLineEdit *strike_id_edit_;
         QPushButton *strike_button_;
@@ -184,12 +197,18 @@ namespace rviz_drone_control{
         int port_0;
         int port_1;
         int port_2;
-
+        double gimbal_pitch_;
 
         ros::Subscriber mavros_state_sub_;
         ros::Subscriber mavros_home_sub_;
+        ros::Subscriber mavros_gps_sub_;
+        ros::Subscriber mavros_compass_sub_;
         ros::Subscriber dji_position_sub_;
 
+        double current_lat;
+        double current_long;
+        double current_alt;
+        double current_yaw;
 
         mavros_msgs::State current_state;
         mavros_msgs::HomePosition home_position;
@@ -200,6 +219,8 @@ namespace rviz_drone_control{
         ros::ServiceClient param_set_client_;
         ros::ServiceClient param_pull_client_;
         ros::ServiceClient param_push_client_;
+        ros::ServiceClient command_client_;
+        mavros_msgs::CommandLong command_;
         mavros_msgs::CommandBool arm_cmd;
         mavros_msgs::SetMode offb_set_mode;
         std::string id_string;
@@ -238,7 +259,7 @@ namespace rviz_drone_control{
         QPushButton *test_button_;
         QPushButton *test2_button_;
         QPushButton *start_button_;
-        
+
         ros::Publisher test_pub_, test2_pub_;
         ros::Publisher mavros_manual_control_pub_;
         ros::Subscriber mavros_state_sub_;
