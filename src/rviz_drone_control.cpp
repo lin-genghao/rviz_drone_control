@@ -168,24 +168,25 @@ namespace rviz_drone_control{
         connect(front_button,SIGNAL(clicked()),this,SLOT(front_callback()));
         connect(left_button,SIGNAL(clicked()),this,SLOT(left_callback()));
         connect(right_button,SIGNAL(clicked()),this,SLOT(right_callback()));
+        connect(back_button,SIGNAL(clicked()),this,SLOT(back_callback()));
 
         pitch_ = 0;
         yaw_ = 0;
     }
     void RvizDroneControl::start_callback() {
         ROS_INFO("start");
-	
-        uav2_buttons_->time_start = ros::Time::now();
-        uav2_buttons_->mission_alt_ = 25;
-        uav2_buttons_->launch_delay_ = 0;
-        uav2_buttons_->set_launch_en();
-        ROS_INFO("uav2 start");
 
-        uav1_buttons_->time_start = ros::Time::now();
-        uav1_buttons_->mission_alt_ = 35;
-        uav1_buttons_->launch_delay_ = 10;
-        uav1_buttons_->set_launch_en();
-        ROS_INFO("uav1 start");
+        if(uav2_buttons_->current_state.connected == true && uav2_buttons_->current_state.mode != "AUTO.MISSION") {
+            uav2_buttons_->time_start = ros::Time::now();
+            uav2_buttons_->set_launch_en();
+            ROS_INFO("uav2 start");
+        }
+
+        if(uav1_buttons_->current_state.connected == true && uav1_buttons_->current_state.mode != "AUTO.MISSION") {
+            uav1_buttons_->time_start = ros::Time::now();
+            uav1_buttons_->set_launch_en();
+            ROS_INFO("uav1 start");
+        }
     }  
     void RvizDroneControl::up_callback() {
         ROS_INFO("up, %s", uav_select_.c_str());
@@ -235,47 +236,47 @@ namespace rviz_drone_control{
             uav1_buttons_->send_reposition_command(0, 0, -5, 0);
         }
         if(uav_select_ == "/uav2") {
-            uav1_buttons_->send_reposition_command(0, 0, -5, 0);
+            uav2_buttons_->send_reposition_command(0, 0, -5, 0);
         }
     }
     void RvizDroneControl::front_callback() {
         ROS_INFO("front, %s", uav_select_.c_str());
         std::string url;
         if(uav_select_ == "/uav1") {
-            uav1_buttons_->send_reposition_command(10, 0, 0, 0);
+            uav1_buttons_->send_reposition_command(5, 0, 0, 0);
         }
         if(uav_select_ == "/uav2") {
-            uav2_buttons_->send_reposition_command(10, 0, 0, 0);
+            uav2_buttons_->send_reposition_command(5, 0, 0, 0);
         }
     }
     void RvizDroneControl::left_callback() {
         ROS_INFO("left, %s", uav_select_.c_str());
         std::string url;
         if(uav_select_ == "/uav1") {
-            uav1_buttons_->send_reposition_command(0, 10, 0, 0);
+            uav1_buttons_->send_reposition_command(0, 5, 0, 0);
         }
         if(uav_select_ == "/uav2") {
-            uav2_buttons_->send_reposition_command(0, 10, 0, 0);
+            uav2_buttons_->send_reposition_command(0, 5, 0, 0);
         }
     }
     void RvizDroneControl::right_callback() {
-        ROS_INFO("left, %s", uav_select_.c_str());
+        ROS_INFO("right, %s", uav_select_.c_str());
         std::string url;
         if(uav_select_ == "/uav1") {
-            uav1_buttons_->send_reposition_command(0, -10, 0, 0);
+            uav1_buttons_->send_reposition_command(0, -5, 0, 0);
         }
         if(uav_select_ == "/uav2") {
-            uav2_buttons_->send_reposition_command(0, -10, 0, 0);
+            uav2_buttons_->send_reposition_command(0, -5, 0, 0);
         }
     }
     void RvizDroneControl::back_callback() {
         ROS_INFO("back, %s", uav_select_.c_str());
         std::string url;
         if(uav_select_ == "/uav1") {
-            uav1_buttons_->send_reposition_command(-10, 0, 0, 0);
+            uav1_buttons_->send_reposition_command(-5, 0, 0, 0);
         }
         if(uav_select_ == "/uav2") {
-            uav2_buttons_->send_reposition_command(-10, 0, 0, 0);
+            uav2_buttons_->send_reposition_command(-5, 0, 0, 0);
         }
     }
     void RvizDroneControl::initManualControlPublisher() {
@@ -353,7 +354,6 @@ namespace rviz_drone_control{
 
         mission_alt_edit_ = new QLineEdit(parent);
         mission_alt_edit_->setText("30");
-        mission_alt_ = 30.0;
         launch_button_ = new QPushButton(tr("start"), parent);
 
         strike_id_edit_ = new QLineEdit(parent);
@@ -368,7 +368,6 @@ namespace rviz_drone_control{
 
         return_home_edit_ = new QLineEdit(parent);
         return_home_edit_->setText("None");
-        return_home_alt_ = 0;
 
         return_home_button_ = new QPushButton(tr("return home"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
@@ -431,6 +430,52 @@ namespace rviz_drone_control{
             // 这里只是一个示例，实际的错误处理可能需要根据你的应用来定
             uav_id_num_ = -1; // 或者其他表示错误的值
         }
+
+        std::string param_prefix = "/rviz/" + id_string;
+        std::string param_name = "";
+
+        mission_alt_ = 0;
+        return_home_alt_ = 0;
+        attack_speed_ = 0;
+        follow_pitch_ = 0;
+        follow_speed_ = 0;
+        follow_height_ = 0;
+        launch_delay_ = 0;
+        current_state.connected = false;
+
+
+        param_name = param_prefix + "/launch_delay";
+        nh_.getParam(param_name, launch_delay_);
+        std::cout<< param_name <<": "<< launch_delay_ << std::endl;
+
+        param_name = param_prefix + "/mission_alt";
+        nh_.getParam(param_name, mission_alt_);
+        std::cout<< param_name <<": "<< mission_alt_ << std::endl;
+
+        param_name = param_prefix + "/mission_speed";
+        nh_.getParam(param_name, mission_speed_);
+        std::cout<< param_name <<": "<< mission_speed_ << std::endl;
+
+        param_name = param_prefix + "/return_home_alt";
+        nh_.getParam(param_name, return_home_alt_);
+        std::cout<< param_name <<": "<< return_home_alt_ << std::endl;
+
+        param_name = param_prefix + "/attack_speed";
+        nh_.getParam(param_name, attack_speed_);
+        std::cout<< param_name <<": "<< attack_speed_ << std::endl;
+
+        param_name = param_prefix + "/follow_pitch";
+        nh_.getParam(param_name, follow_pitch_);
+        std::cout<< param_name <<": "<< follow_pitch_ << std::endl;  
+
+        param_name = param_prefix + "/follow_speed";
+        nh_.getParam(param_name, follow_speed_);
+        std::cout<< param_name <<": "<< follow_speed_ << std::endl;  
+
+        param_name = param_prefix + "/follow_height";
+        nh_.getParam(param_name, follow_height_);
+        std::cout<< param_name <<": "<< follow_height_ << std::endl;       
+
         url_prefix = "http://";
         port_0 = 7080;
         port_1 = 7081;
@@ -457,7 +502,6 @@ namespace rviz_drone_control{
         follow_en_ = false;
         return_home_en_ = false;
         land_en_ = false;
-        launch_delay_ = 0;
         waypoints_flag = 0;
 
         // 服务的客户端（设定无人机的模式、状态）
@@ -479,6 +523,9 @@ namespace rviz_drone_control{
         box_select_sub_ = nh_.subscribe<geometry_msgs::PoseArray>(id_string + "/box_select", 10, &UavButton::boxSelectCallback, this);
 
         // local_pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &UavButton::LocalPoseCallBack, this);
+        paramSet("RTL_RETURN_ALT", return_home_alt_);
+        paramSet("MPC_XY_VEL_MAX", mission_speed_);
+        paramSet("MPC_XY_CRUISE", mission_speed_);
 
         offb_set_mode.request.custom_mode = "POSCTL";
 
@@ -580,14 +627,7 @@ namespace rviz_drone_control{
     void UavButton::track_callback() {
         ROS_INFO("Track button clicked.");
         url = url_1 + "/api/track_dive?speed=";
-        FILE* fp = fopen("/home/lgh/catkin_ws/src/ground_station/launch/dive_speed.txt","r");
-        char buff[1024] = {0};
-        fread(buff, 1, 1024, fp);
-        fclose(fp);
-        float speed = atof(buff);
-        std::cout << url << std::endl;
-        std::cout << speed << std::endl;
-        threads->set_track_drve_param(url, speed);
+        threads->set_track_drve_param(url, attack_speed_);
         threads->set_track_drve_en();   
     }
 
@@ -595,37 +635,8 @@ namespace rviz_drone_control{
         ROS_INFO("Follow button clicked.");
         // "http://192.168.144.18:7081/api/follow?keep_deg="
         url = url_1 + "/api/follow?keep_deg=";
-        FILE* fp = fopen("/home/lgh/catkin_ws/src/ground_station/launch/follow_param.txt","r");
-        // char buff[1024] = {0};
-        // fread(buff, 1, 1024, fp);
-        // fclose(fp);
-
-        if (fp == NULL) {
-            ROS_ERROR("Failed to open file.");
-            return;
-        }
-        
-        char buff[1024] = {0};
-        if (fgets(buff, sizeof(buff), fp) == NULL) {
-            ROS_ERROR("Failed to read from file.");
-            fclose(fp);
-            return;
-        }
-        fclose(fp);
-        // 使用stringstream来分割字符串
-        std::stringstream ss(buff);
-        float keep_deg, speed, keep_z;
-
-        // 从stringstream中读取三个浮点数
-        if (!(ss >> keep_deg >> speed >> keep_z)) {
-            ROS_ERROR("Failed to parse parameters from file.");
-            return;
-        }
-        std::cout << url << std::endl;
-        std::cout << keep_deg << std::endl;
-        std::cout << speed << std::endl;
-        std::cout << keep_z << std::endl;
-        threads->set_follow_param(url, keep_deg, speed, keep_z);
+        std::cout << "set_follow_param" << std::endl;
+        threads->set_follow_param(url, follow_pitch_, follow_speed_, follow_height_);
         threads->set_follow_en();   
     }
 
@@ -639,24 +650,24 @@ namespace rviz_drone_control{
         bool ok;
         double response;
 
-        return_home_alt_ = inputText.toDouble(&ok);
+        // return_home_alt_ = inputText.toDouble(&ok);
 
-        if (ok) {
-            // 输入有效，打印高度值
-            std::cout << "return home alt: " << return_home_alt_ << std::endl;
-            response = paramSet("RTL_RETURN_ALT", return_home_alt_);
+        // if (ok) {
+        //     // 输入有效，打印高度值
+        //     std::cout << "return home alt: " << return_home_alt_ << std::endl;
+        //     response = paramSet("RTL_RETURN_ALT", return_home_alt_);
 
-            if(response > 10.0 && response < 70.0)
+            if(return_home_alt_ > 10.0 && return_home_alt_ < 70.0)
             {    
                 return_home_en_ = true;
                 ROS_INFO("Return Home button clicked.");
             }
 
             // 这里可以添加其他处理用户输入的代码...
-        } else {
-            // 输入无效，弹出提示信息
-            QMessageBox::warning(this, "Input Error", "Please enter a valid double.");
-        }
+        // } else {
+        //     // 输入无效，弹出提示信息
+        //     QMessageBox::warning(this, "Input Error", "Please enter a valid double.");
+        // }
 
         return_home_pub_.publish(empty_msg);
     }
@@ -822,18 +833,6 @@ namespace rviz_drone_control{
 
     void UavButton::mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg){
         current_state = *msg;
-        // std::cout << "RTL_RETURN_ALT: " << return_home_alt_ << std::endl;
-        if(return_home_alt_ == 0){
-            ros::service::waitForService(id_string + "/mavros/param/get");
-            std::cout << id_string << std::endl;
-            // return_home_alt_ = paramGet("RTL_RETURN_ALT");
-            if(uav_id_num_ != -1) {
-                return_home_alt_ = 20 + uav_id_num_ * 10;
-            }
-
-            QString return_home_alt_str_ = QString::number(return_home_alt_);
-            return_home_edit_->setText(return_home_alt_str_);
-        }
 
         if(takeoff_en_){
             // 1. 设置飞行模式为定点模式

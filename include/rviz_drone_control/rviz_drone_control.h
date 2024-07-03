@@ -129,10 +129,10 @@ namespace rviz_drone_control{
         BackgroundWorker* threads;
 
         void set_launch_en();
-        double mission_alt_;
-        int launch_delay_;
+
         ros::Time time_start;
         ros::Time time_now;
+        mavros_msgs::State current_state;
 
     protected Q_SLOTS:
         void takeoff_callback();
@@ -186,7 +186,14 @@ namespace rviz_drone_control{
         int waypoints_flag;
 
         double return_home_alt_;
+        double mission_alt_;
+        double mission_speed_;
+        int launch_delay_;
         int strike_id_;
+        double attack_speed_;
+        double follow_pitch_;
+        double follow_speed_;
+        double follow_height_;
 
         std::string uav_id_;
         int uav_id_num_;
@@ -210,7 +217,6 @@ namespace rviz_drone_control{
         double current_alt;
         double current_yaw;
 
-        mavros_msgs::State current_state;
         mavros_msgs::HomePosition home_position;
         geometry_msgs::TwistStamped current_velocity;
         ros::ServiceClient arming_client;
