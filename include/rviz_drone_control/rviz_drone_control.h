@@ -145,6 +145,8 @@ namespace rviz_drone_control{
         void land_callback();
         void gimbal_up_callback();
         void gimbal_down_callback();
+        void turn_left_callback();
+        void turn_right_callback();
 
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
         void mavrosHomeCallback(const mavros_msgs::HomePosition::ConstPtr &msg);
@@ -182,6 +184,9 @@ namespace rviz_drone_control{
         bool follow_en_ = false;
         bool return_home_en_ = false;
         bool land_en_ = false;
+        bool param_init_en_ = false;
+        bool turn_left_en_ = false;
+        bool turn_right_en_ = false;
         
         int waypoints_flag;
 

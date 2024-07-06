@@ -12,6 +12,7 @@ namespace rviz_drone_control{
 
     	//创建两个按钮---测试按钮和测试按钮2
         auto *button_layout = new QVBoxLayout;
+        auto *uav_button_layout = new QHBoxLayout;
 
         test_button_ = new QPushButton(tr("测试按钮"),this);
         test2_button_ = new QPushButton(tr("测试按钮2"),this);
@@ -23,6 +24,7 @@ namespace rviz_drone_control{
         test_button_->setVisible(false);
         test2_button_->setVisible(false);
         setLayout(button_layout);
+        setLayout(uav_button_layout);
         
         //信号连接---点击信号发生，连接到槽函数test_callback()
         connect(test_button_,SIGNAL(clicked()),this,SLOT(test_callback()));
@@ -56,7 +58,7 @@ namespace rviz_drone_control{
 
         // 创建无人机选择框并初始化
         uav_combo_box_ = new QComboBox(this);
-        uav_combo_box_->setFixedSize(600, 50);
+        uav_combo_box_->setFixedSize(1000, 50);
         uav_combo_box_->addItem("None");
         uav_combo_box_->addItem("UAV 1");
         uav_combo_box_->addItem("UAV 2");
@@ -76,14 +78,16 @@ namespace rviz_drone_control{
         start_button_ = new QPushButton(tr("start"), this);
         connect(start_button_,SIGNAL(clicked()),this,SLOT(start_callback()));
         all_function_layout->addWidget(start_button_);
-        start_button_->setFixedSize(600, 50);
+        start_button_->setFixedSize(800, 50);
 
         button_layout->addLayout(all_function_layout);
 
         // 将垂直布局添加到主布局中
         // button_layout->addLayout(uav0_layout);
-        button_layout->addLayout(uav1_layout);
-        button_layout->addLayout(uav2_layout);
+
+        uav_button_layout->addLayout(uav1_layout);
+        uav_button_layout->addLayout(uav2_layout);
+        button_layout->addLayout(uav_button_layout);
 
         auto* button_move = new QHBoxLayout;
 
@@ -148,14 +152,17 @@ namespace rviz_drone_control{
         // 将菱形布局添加到主布局中
         button_move->addLayout(diamond_layout);
         button_move->addLayout(diamond_layout_2);
-        up_button->setVisible(true);
-        turn_left_button->setVisible(true);
-        turn_right_button->setVisible(true);
-        down_button->setVisible(true);
-        front_button->setVisible(true);
-        left_button->setVisible(true);
-        right_button->setVisible(true);
-        back_button->setVisible(true);
+
+        uav_combo_box_->setVisible(false);
+        start_button_->setVisible(true);
+        up_button->setVisible(false);
+        turn_left_button->setVisible(false);
+        turn_right_button->setVisible(false);
+        down_button->setVisible(false);
+        front_button->setVisible(false);
+        left_button->setVisible(false);
+        right_button->setVisible(false);
+        back_button->setVisible(false);
 
         button_layout->addLayout(button_move);
 
@@ -372,11 +379,15 @@ namespace rviz_drone_control{
         return_home_button_ = new QPushButton(tr("return home"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
 
+        QPushButton* turn_left_button_ = new QPushButton(tr("left"), parent);
+
         auto *gimbal_layout = new QVBoxLayout;
         QPushButton* gimbal_up_button = new QPushButton(tr("g up"), parent);
         QPushButton* gimbal_down_button = new QPushButton(tr("g down"), parent);
         gimbal_layout->addWidget(gimbal_up_button);
         gimbal_layout->addWidget(gimbal_down_button);
+
+        QPushButton* turn_right_button_ = new QPushButton(tr("right"), parent);
 
         mission_alt_edit_->setVisible(false);
         launch_button_->setVisible(false);
@@ -397,14 +408,21 @@ namespace rviz_drone_control{
         layout_->addWidget(strike_clean_button_);
         layout_->addWidget(return_home_edit_);
         layout_->addWidget(return_home_button_);
+        layout_->addWidget(turn_left_button_);
         layout_->addLayout(gimbal_layout);
+        layout_->addWidget(turn_right_button_);
+
         // layout_->addWidget(land_button_);
-        strike_id_edit_->setFixedSize(75, 50);
-        strike_button_->setFixedSize(75, 50);
-        track_button_->setFixedSize(75, 50);
-        follow_button_->setFixedSize(75, 50);
-        strike_clean_button_->setFixedSize(75, 50);
-        return_home_button_->setFixedSize(75, 50);
+        strike_id_edit_->setFixedSize(60, 50);
+        strike_button_->setFixedSize(60, 50);
+        track_button_->setFixedSize(60, 50);
+        follow_button_->setFixedSize(60, 50);
+        strike_clean_button_->setFixedSize(60, 50);
+        return_home_button_->setFixedSize(60, 50);
+        turn_left_button_->setFixedSize(30, 30);
+        gimbal_up_button->setFixedSize(30, 30);
+        gimbal_down_button->setFixedSize(30, 30);
+        turn_right_button_->setFixedSize(30, 30);
 
         group_box_->setLayout(layout_);
         // group_box_->layout()->setSizeConstraint(QLayout::SetFixedSize);
@@ -502,6 +520,9 @@ namespace rviz_drone_control{
         follow_en_ = false;
         return_home_en_ = false;
         land_en_ = false;
+        turn_left_en_ = false;
+        turn_right_en_ = false;
+        param_init_en_ = false;
         waypoints_flag = 0;
 
         // 服务的客户端（设定无人机的模式、状态）
@@ -523,9 +544,7 @@ namespace rviz_drone_control{
         box_select_sub_ = nh_.subscribe<geometry_msgs::PoseArray>(id_string + "/box_select", 10, &UavButton::boxSelectCallback, this);
 
         // local_pos_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &UavButton::LocalPoseCallBack, this);
-        paramSet("RTL_RETURN_ALT", return_home_alt_);
-        paramSet("MPC_XY_VEL_MAX", mission_speed_);
-        paramSet("MPC_XY_CRUISE", mission_speed_);
+
 
         offb_set_mode.request.custom_mode = "POSCTL";
 
@@ -549,6 +568,14 @@ namespace rviz_drone_control{
     }
 
     void UavButton::set_launch_en() {
+        if(param_init_en_ == false) {
+            ros::service::waitForService(id_string + "/mavros/param/set");
+            // paramSet("RTL_RETURN_ALT", return_home_alt_);
+            // paramSet("MPC_XY_VEL_MAX", mission_speed_);
+            // paramSet("MPC_XY_CRUISE", mission_speed_);
+            ROS_INFO("set param...");
+            param_init_en_ = true;
+        }
         launch_en_ = true;
 
         // float x_lat = 23.19659346083342;
@@ -694,6 +721,16 @@ namespace rviz_drone_control{
         threads->set_cloud_pitch_param(url, gimbal_pitch_);
         threads->set_pitch_en();
     }
+
+    void UavButton::turn_left_callback() {
+        ROS_INFO("Turn_left button clicked.");
+        turn_left_en_ = true;
+    }
+
+     void UavButton::turn_right_callback() {
+        ROS_INFO("Turn_right button clicked.");
+        turn_right_en_ = true;
+    }   
 
     void UavButton::send_reposition_command(double x, double y, double z, double yaw) {
         using mavlink::common::MAV_CMD;
@@ -1007,7 +1044,7 @@ namespace rviz_drone_control{
             }
 
             if(waypoints_flag == 3) {
-                // waypoints_flag = 4;
+                waypoints_flag = 4;
                 // 1. 设置飞行模式为定点模式
                 if (current_state.mode != "POSCTL") {
                     offb_set_mode.request.custom_mode = "POSCTL";
@@ -1101,6 +1138,16 @@ namespace rviz_drone_control{
                     return; // 如果无法设置模式，则退出函数
                 }
             }
+        }
+        else if(turn_left_en_) {
+            send_reposition_command(0, 0, 0, -10.0);
+            turn_left_en_ = false;
+            ROS_INFO("drone turn left");
+        }
+        else if(turn_right_en_) {
+            send_reposition_command(0, 0, 0, 10.0);
+            turn_left_en_ = false;
+            ROS_INFO("drone turn right");
         }
     }
 
