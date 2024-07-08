@@ -75,9 +75,13 @@ namespace rviz_drone_control{
 
         auto *all_function_layout = new QHBoxLayout;
 
+        QFont font = QFont();
+        font.setPointSize(15);
+
         start_button_ = new QPushButton(tr("start"), this);
         connect(start_button_,SIGNAL(clicked()),this,SLOT(start_callback()));
         all_function_layout->addWidget(start_button_);
+        start_button_->setFont(font);
         start_button_->setFixedSize(800, 50);
 
         button_layout->addLayout(all_function_layout);
@@ -376,53 +380,87 @@ namespace rviz_drone_control{
         return_home_edit_ = new QLineEdit(parent);
         return_home_edit_->setText("None");
 
-        return_home_button_ = new QPushButton(tr("return home"), parent);
+        return_home_button_ = new QPushButton(tr("go home"), parent);
         land_button_ = new QPushButton(tr("降落"), parent);
 
-        QPushButton* turn_left_button_ = new QPushButton(tr("left"), parent);
+        QPushButton* turn_left_button_ = new QPushButton(tr("L"), parent);
 
         auto *gimbal_layout = new QVBoxLayout;
-        QPushButton* gimbal_up_button = new QPushButton(tr("g up"), parent);
-        QPushButton* gimbal_down_button = new QPushButton(tr("g down"), parent);
+        QPushButton* gimbal_up_button = new QPushButton(tr("U"), parent);
+        QPushButton* gimbal_down_button = new QPushButton(tr("D"), parent);
         gimbal_layout->addWidget(gimbal_up_button);
         gimbal_layout->addWidget(gimbal_down_button);
 
-        QPushButton* turn_right_button_ = new QPushButton(tr("right"), parent);
+        QPushButton* turn_right_button_ = new QPushButton(tr("R"), parent);
 
+        takeoff_button_->setVisible(false);
         mission_alt_edit_->setVisible(false);
         launch_button_->setVisible(false);
-        takeoff_button_->setVisible(false);
+        strike_id_edit_->setVisible(true);
+        strike_button_->setVisible(true);
+        track_button_->setVisible(true);
+        follow_button_->setVisible(true);
+        strike_clean_button_->setVisible(true);
+        follow_button_->setVisible(true);
         return_home_edit_->setVisible(false);
         return_home_button_->setVisible(true);
         land_button_->setVisible(false);
 
         // // 为按钮创建水平布局
         layout_ = new QHBoxLayout;
+        QVBoxLayout *layout_1 = new QVBoxLayout;
+        QHBoxLayout *layout_2 = new QHBoxLayout;
+        QHBoxLayout *layout_3 = new QHBoxLayout;
         // layout_->addWidget(takeoff_button_);
-        layout_->addWidget(mission_alt_edit_);
-        layout_->addWidget(launch_button_);
-        layout_->addWidget(strike_id_edit_);
-        layout_->addWidget(strike_button_);
-        layout_->addWidget(track_button_);
-        layout_->addWidget(follow_button_);
-        layout_->addWidget(strike_clean_button_);
-        layout_->addWidget(return_home_edit_);
-        layout_->addWidget(return_home_button_);
+        layout_2->addWidget(mission_alt_edit_);
+        layout_2->addWidget(launch_button_);
+        layout_2->addWidget(strike_id_edit_);
+        layout_2->addWidget(strike_button_);
+        layout_2->addWidget(track_button_);
+        layout_3->addWidget(follow_button_);
+        layout_3->addWidget(strike_clean_button_);
+        layout_3->addWidget(return_home_edit_);
+        layout_3->addWidget(return_home_button_);
+        layout_3->addWidget(land_button_);
+        layout_1->addLayout(layout_2);
+        layout_1->addLayout(layout_3);
+        layout_->addLayout(layout_1);
         layout_->addWidget(turn_left_button_);
         layout_->addLayout(gimbal_layout);
         layout_->addWidget(turn_right_button_);
 
-        // layout_->addWidget(land_button_);
-        strike_id_edit_->setFixedSize(60, 50);
-        strike_button_->setFixedSize(60, 50);
-        track_button_->setFixedSize(60, 50);
-        follow_button_->setFixedSize(60, 50);
-        strike_clean_button_->setFixedSize(60, 50);
-        return_home_button_->setFixedSize(60, 50);
-        turn_left_button_->setFixedSize(30, 30);
-        gimbal_up_button->setFixedSize(30, 30);
-        gimbal_down_button->setFixedSize(30, 30);
-        turn_right_button_->setFixedSize(30, 30);
+        QFont font = QFont();
+        font.setPointSize(15);
+
+        strike_id_edit_->setFont(font);
+        strike_id_edit_->setFixedSize(100, 50);
+
+        strike_button_->setFont(font);
+        strike_button_->setFixedSize(100, 50);
+
+        track_button_->setFont(font);
+        track_button_->setFixedSize(100, 50);
+
+        follow_button_->setFont(font);
+        follow_button_->setFixedSize(100, 50);
+
+        strike_clean_button_->setFont(font);
+        strike_clean_button_->setFixedSize(100, 50);
+
+        return_home_button_->setFont(font);
+        return_home_button_->setFixedSize(100, 50);
+
+        turn_left_button_->setFont(font);
+        turn_left_button_->setFixedSize(40, 30);
+
+        gimbal_up_button->setFont(font);
+        gimbal_up_button->setFixedSize(40, 30);
+
+        gimbal_down_button->setFont(font);
+        gimbal_down_button->setFixedSize(40, 30);
+
+        turn_right_button_->setFont(font);
+        turn_right_button_->setFixedSize(40, 30);
 
         group_box_->setLayout(layout_);
         // group_box_->layout()->setSizeConstraint(QLayout::SetFixedSize);
@@ -463,6 +501,9 @@ namespace rviz_drone_control{
         launch_delay_ = 0;
         current_state.connected = false;
 
+        param_name = param_prefix + "/ai_ip";
+        nh_.getParam(param_name, last_part_of_ip);
+        std::cout<< param_name <<": "<< last_part_of_ip << std::endl;
 
         param_name = param_prefix + "/launch_delay";
         nh_.getParam(param_name, launch_delay_);
@@ -500,10 +541,10 @@ namespace rviz_drone_control{
         port_0 = 7080;
         port_1 = 7081;
         url_suffix = "/api/set_cloud_pitch?degree=";
-        last_part_of_ip = 30 + uav_id_num_;
-        if(last_part_of_ip == 31) {
-            last_part_of_ip = 33;
-        }
+        // last_part_of_ip = 30 + uav_id_num_;
+        // if(last_part_of_ip == 31) {
+        //     last_part_of_ip = 33;
+        // }
         url_0 = url_prefix + "192.168.144." + std::to_string(last_part_of_ip) + 
                 ":" + std::to_string(port_0);
         url_1 = url_prefix + "192.168.144." + std::to_string(last_part_of_ip) + 
@@ -529,6 +570,7 @@ namespace rviz_drone_control{
         turn_right_en_ = false;
         param_init_en_ = false;
         waypoints_flag = 0;
+        error_count = 0;
 
         // 服务的客户端（设定无人机的模式、状态）
         arming_client = nh_.serviceClient<mavros_msgs::CommandBool>(id_string + "/mavros/cmd/arming");
@@ -925,6 +967,10 @@ namespace rviz_drone_control{
             //     threads->set_mission_en();
             //     launch_en_ = false;
             // }
+            if(error_count > 10 || time_now.toSec() - time_start.toSec() > launch_delay_ + 10) {
+                launch_en_ = false;
+                ROS_INFO("Exit Mission.");
+            }
 
             if(waypoints_flag == 0) {
                 time_now = ros::Time::now();
@@ -932,6 +978,7 @@ namespace rviz_drone_control{
                 if(time_now.toSec() - time_start.toSec() > launch_delay_) {
                     waypoints_flag = 1;
                 }
+                ROS_INFO("Start Mission.");
             }
 
             if(waypoints_flag == 1) {
@@ -941,7 +988,8 @@ namespace rviz_drone_control{
                     ROS_INFO("Waypoints cleared successfully before launch.");
 
                 } else {
-                    ROS_ERROR("Failed to call clear waypoints service before launch.");
+                    error_count = error_count + 1;
+                    ROS_ERROR("Failed to call clear waypoints service before launch. error count: %d", error_count);
                     return; // 如果无法清除航点，则退出函数
                 }
             }
@@ -1045,7 +1093,8 @@ namespace rviz_drone_control{
                     waypoints_flag = 3;
                     ROS_INFO("Waypoints pushed successfully.");
                 } else {
-                    ROS_ERROR("Failed to push waypoints.");
+                    error_count = error_count + 1;
+                    ROS_ERROR("Failed to push waypoints. error count: %d", error_count);
                 }
             }
 
@@ -1057,9 +1106,9 @@ namespace rviz_drone_control{
                     if (set_mode_client.call(offb_set_mode) && offb_set_mode.response.mode_sent) {
                         waypoints_flag = 4;
                         ROS_INFO("POSCTL mode enabled");
-
                     } else {
-                        ROS_ERROR("Failed to set POSCTL mode");
+                        error_count = error_count + 1;
+                        ROS_ERROR("Failed to set POSCTL mode. error count: %d", error_count);
                         return; // 如果无法设置模式，则退出函数
                     }
                 }
@@ -1077,7 +1126,8 @@ namespace rviz_drone_control{
                         waypoints_flag = 5;
                         ROS_INFO("Vehicle armed");
                     } else {
-                        ROS_ERROR("Failed to arm vehicle");
+                        error_count = error_count + 1;
+                        ROS_ERROR("Failed to arm vehicle. error count: %d", error_count);
                         return; // 如果无法武装无人机，则退出函数
                     }
                 }
@@ -1095,7 +1145,8 @@ namespace rviz_drone_control{
                         waypoints_flag = 6;
                         ROS_INFO("TAKEOFF mode enabled");
                     } else {
-                        ROS_ERROR("Failed to set TAKEOFF mode");
+                        error_count = error_count + 1;
+                        ROS_ERROR("Failed to set TAKEOFF mode. error count: %d", error_count);
                         return; // 如果无法设置模式，则退出函数
                     }
                 }
@@ -1110,7 +1161,8 @@ namespace rviz_drone_control{
                         waypoints_flag = 0;
                         ROS_INFO("MISSION mode enabled");
                     } else {
-                        ROS_ERROR("Failed to set MISSION mode");
+                        error_count = error_count + 1;
+                        ROS_ERROR("Failed to set MISSION mode. error count: %d", error_count);
                         return; // 如果无法设置模式，则退出函数
                     }
                 }

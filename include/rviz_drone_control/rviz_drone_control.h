@@ -10,6 +10,7 @@
 #include <QString>
 #include <QComboBox>
 #include <QObject>
+#include <QFont>
 #include <std_msgs/Empty.h>
 #include <std_msgs/String.h>
 #include <std_msgs/Float64.h>
@@ -189,6 +190,8 @@ namespace rviz_drone_control{
         bool turn_right_en_ = false;
         
         int waypoints_flag;
+
+        int error_count;
 
         double return_home_alt_;
         double mission_alt_;
