@@ -439,6 +439,8 @@ namespace rviz_drone_control{
         connect(land_button_, SIGNAL(clicked()), this, SLOT(land_callback()));
         connect(gimbal_up_button, SIGNAL(clicked()), this, SLOT(gimbal_up_callback()));
         connect(gimbal_down_button, SIGNAL(clicked()), this, SLOT(gimbal_down_callback()));
+        connect(turn_left_button_, SIGNAL(clicked()), this, SLOT(turn_left_callback()));
+        connect(turn_right_button_, SIGNAL(clicked()), this, SLOT(turn_right_callback()));
 
         id_string = id.toStdString();
         if (!id_string.empty() && std::isdigit(id_string.back())) {
@@ -499,6 +501,9 @@ namespace rviz_drone_control{
         port_1 = 7081;
         url_suffix = "/api/set_cloud_pitch?degree=";
         last_part_of_ip = 30 + uav_id_num_;
+        if(last_part_of_ip == 31) {
+            last_part_of_ip = 33;
+        }
         url_0 = url_prefix + "192.168.144." + std::to_string(last_part_of_ip) + 
                 ":" + std::to_string(port_0);
         url_1 = url_prefix + "192.168.144." + std::to_string(last_part_of_ip) + 
@@ -777,7 +782,8 @@ namespace rviz_drone_control{
         command_.request.param4 = (current_yaw + yaw) * M_PI / 180; 
         command_.request.param5 = target_lat; // 转换回度
         command_.request.param6 = target_long; // 转换回度
-        command_.request.param7 = current_alt + z; 
+        command_.request.param7 = NAN; 
+        // command_.request.param7 = current_alt + z; 
         ROS_INFO("%s current lat: %f\t lon: %f\t alt: %f",id_string.c_str(), current_lat, current_long, current_alt);
         ROS_INFO("%s target lat: %f\t lon: %f\t alt: %f",id_string.c_str(), command_.request.param5, command_.request.param6, command_.request.param7);
 
@@ -1140,13 +1146,13 @@ namespace rviz_drone_control{
             }
         }
         else if(turn_left_en_) {
-            send_reposition_command(0, 0, 0, -10.0);
+            send_reposition_command(0, 0, 0, -5.0);
             turn_left_en_ = false;
             ROS_INFO("drone turn left");
         }
         else if(turn_right_en_) {
-            send_reposition_command(0, 0, 0, 10.0);
-            turn_left_en_ = false;
+            send_reposition_command(0, 0, 0, 5.0);
+            turn_right_en_ = false;
             ROS_INFO("drone turn right");
         }
     }
