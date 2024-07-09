@@ -2,6 +2,16 @@
 
 这是一个rviz插件，可以在rviz上显示按键来控制PX4无人机
 
+
+# 环境安装
+ubuntu 20.04 ros noetic 
+
+```bash
+
+apt install qtbase5-dev qt5-qmake qtbase5-dev-tools libqt5svg5-dev qtbase5-private-dev libeigen3-dev libgtest-dev libsdl-image1.2-dev libsdl1.2-dev ros-noetic-mavros* build-essential python3-catkin-tools ros-noetic-qt-*
+
+```
+
 # 源码编译
 
 ```bash
