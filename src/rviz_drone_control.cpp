@@ -4,26 +4,16 @@ namespace rviz_drone_control{
     RvizDroneControl::RvizDroneControl(QWidget *parent):Panel(parent)
     {
         _ui.setupUi(this);
-
         // body_velocity_sub = nh_.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, &RvizDroneControl::LocalPoseCallBack, this);
 
         // vec_pub = nh_.advertise<geometry_msgs::Twist>("/mavros/setpoint_velocity/cmd_vel_unstamped", 10);
 
-        uav_select_ = "/uav";
         initManualControlPublisher();
         CommunicationInit();
 
         // button_move->setVisible(false);
-        
-        connect(_ui.target_lock_button,SIGNAL(clicked()),this,SLOT(target_lock_callback()));
-        connect(_ui.drone_attack_button,SIGNAL(clicked()),this,SLOT(drone_attack_callback()));
-        connect(_ui.target_follow_button,SIGNAL(clicked()),this,SLOT(target_follow_callback()));
-        connect(_ui.target_stop_button,SIGNAL(clicked()),this,SLOT(target_stop_callback()));
-        connect(_ui.gimbal_up_button,SIGNAL(clicked()),this,SLOT(gimbal_up_callback()));
-        connect(_ui.gimbal_down_button,SIGNAL(clicked()),this,SLOT(gimbal_down_callback()));
-        connect(_ui.drone_yaw_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
-        connect(_ui.drone_yaw_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
-
+        connect(_ui.current_uav_connect_button,SIGNAL(clicked()),this,SLOT(uav_connect_callback()));
+    
         pitch_ = 0;
         yaw_ = 0;
     }
@@ -42,6 +32,48 @@ namespace rviz_drone_control{
     //         ROS_INFO("uav1 start");
     //     }
     // }  
+
+    void RvizDroneControl::uav_connect_callback(){
+
+        QString uav_ip = _ui.current_uav_text->toPlainText();
+        auto part_vec = uav_ip.split(".");
+        if(part_vec.count() != 4){
+            std::cout << "input ip error " << uav_ip.toStdString();
+            QMessageBox::warning(this, "IP Input Error", "Please enter a valid IP.");
+            _uav_connected = false;
+            return;
+        }
+        auto last_num = part_vec.rbegin()->toStdString();
+        auto last_bit = last_num.at(last_num.length() -1);
+        // std::cout << "last_num " << last_num << "last bit " << last_bit << std::endl;
+        uav_select_ = "/uav";
+        uav_select_ +=  last_bit;    // 不能直接等于"/uav" + last_bit https://blog.csdn.net/weixin_43336281/article/details/100588048
+        
+        std::cout << "uav_select_ " << uav_select_ << std::endl;
+        _uav_connected = true;
+        if(_uav_connected){
+            connect(_ui.target_lock_button,SIGNAL(clicked()),this,SLOT(target_lock_callback()));
+            connect(_ui.drone_attack_button,SIGNAL(clicked()),this,SLOT(drone_attack_callback()));
+            connect(_ui.target_follow_button,SIGNAL(clicked()),this,SLOT(target_follow_callback()));
+            connect(_ui.target_stop_button,SIGNAL(clicked()),this,SLOT(target_stop_callback()));
+            connect(_ui.gimbal_up_button,SIGNAL(clicked()),this,SLOT(gimbal_up_callback()));
+            connect(_ui.gimbal_down_button,SIGNAL(clicked()),this,SLOT(gimbal_down_callback()));
+            connect(_ui.drone_yaw_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
+            connect(_ui.drone_yaw_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
+        } else {
+            disconnect(_ui.target_lock_button,SIGNAL(clicked()),this,SLOT(target_lock_callback()));
+            disconnect(_ui.drone_attack_button,SIGNAL(clicked()),this,SLOT(drone_attack_callback()));
+            disconnect(_ui.target_follow_button,SIGNAL(clicked()),this,SLOT(target_follow_callback()));
+            disconnect(_ui.target_stop_button,SIGNAL(clicked()),this,SLOT(target_stop_callback()));
+            disconnect(_ui.gimbal_up_button,SIGNAL(clicked()),this,SLOT(gimbal_up_callback()));
+            disconnect(_ui.gimbal_down_button,SIGNAL(clicked()),this,SLOT(gimbal_down_callback()));
+            disconnect(_ui.drone_yaw_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
+            disconnect(_ui.drone_yaw_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
+        }
+       
+
+       
+    }
 
     void RvizDroneControl::turn_left_callback() {
         ROS_INFO("done yaw trun left, %s", uav_select_.c_str());
@@ -234,8 +266,7 @@ namespace rviz_drone_control{
     void RvizDroneControl::load(const rviz::Config &config){
         Panel::load(config);
         ROS_INFO("load...");
-
-        uav1_connected = false;
+        _uav_connected = false;
     }
     //将所有配置数据保存到给定的Config对象中。在这里，重要的是要对父类调用save（），以便保存类id和面板名称。---必须要有的
     void RvizDroneControl::save(rviz::Config config) const{
@@ -245,7 +276,7 @@ namespace rviz_drone_control{
     }
 
     void RvizDroneControl::CommunicationInit() {
-        id_string = "192.168.144.61";// id.toStdString();
+        id_string = "test61";// id.toStdString();
         if (!id_string.empty() && std::isdigit(id_string.back())) {
             uav_id_num_ = std::stoi(std::string(1, id_string.back()));
         } else {

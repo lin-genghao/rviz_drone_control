@@ -123,13 +123,12 @@ namespace rviz_drone_control{
         RvizDroneControl(QWidget *parent = 0);
         virtual void load(const rviz::Config &config);
         virtual void save(rviz::Config config) const;
-        std::string uav_select_;
         
     protected Q_SLOTS:
         void test_callback();
         void test2_callback();
         void start_callback();
-        void up_callback();
+        void uav_connect_callback();
         void turn_left_callback();
         void turn_right_callback();
         void target_lock_callback();
@@ -175,8 +174,9 @@ namespace rviz_drone_control{
         std::string ai_ctrl_url;
         std::string ai_gimbal_ctrl_url;
 
-        bool uav1_connected = false;
-        bool uav2_connected = false;
+        bool _uav_connected = false;
+        std::string uav_select_;
+
 
         ros::Publisher takeoff_pub_;
         ros::Publisher launch_pub_;
