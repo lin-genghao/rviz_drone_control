@@ -45,6 +45,9 @@
 #include <QThread>
 #include <cstdlib> // 对于 std::stoi
 
+#include "single_uav_ctrl_panel.h"
+
+
 namespace rviz_drone_control{
     class BackgroundWorker : public QThread{
     public:
@@ -113,41 +116,39 @@ namespace rviz_drone_control{
         int uav_id_;
     };
 
-    class UavButton :public QWidget{
-        Q_OBJECT
-    public:
-        std::string url;
-        std::string url_0;
-        std::string url_1;
-        UavButton(ros::NodeHandle* nh, QWidget *parent = nullptr,  const QString& id = QString("uav0")); // 构造函数
-        QHBoxLayout* get_layout();
-        QWidget* get_button_widget();
-        void set_Visible(bool visible);
 
+    class RVIZ_EXPORT RvizDroneControl :public rviz::Panel  {
+    Q_OBJECT
+    public:
+        RvizDroneControl(QWidget *parent = 0);
+        virtual void load(const rviz::Config &config);
+        virtual void save(rviz::Config config) const;
+        std::string uav_select_;
+        
+    protected Q_SLOTS:
+        void test_callback();
+        void test2_callback();
+        void start_callback();
+        void up_callback();
+        void turn_left_callback();
+        void turn_right_callback();
+        void target_lock_callback();
+        void target_stop_callback();
+        void drone_attack_callback();
+        void target_follow_callback();
+        void return_home_callback();
+        void gimbal_up_callback();
+        void gimbal_down_callback();
+
+
+        void initManualControlPublisher();
+        void manual_control_callback(const mavros_msgs::ManualControl::ConstPtr &msg); // 无人机选择框的槽函数
+        // void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
+    private:
+        void CommunicationInit();
         void send_reposition_command(double x, double y, double z, double yaw);
         double paramGet(std::string param_str);
         double paramSet(std::string param_str, double vaule);
-        BackgroundWorker* threads;
-
-        void set_launch_en();
-
-        ros::Time time_start;
-        ros::Time time_now;
-        mavros_msgs::State current_state;
-
-    protected Q_SLOTS:
-        void takeoff_callback();
-        void launch_callback();
-        void strike_callback();
-        void strike_clean_callback();
-        void track_callback();
-        void follow_callback();
-        void return_home_callback();
-        void land_callback();
-        void gimbal_up_callback();
-        void gimbal_down_callback();
-        void turn_left_callback();
-        void turn_right_callback();
 
         void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
         void mavrosHomeCallback(const mavros_msgs::HomePosition::ConstPtr &msg);
@@ -157,22 +158,26 @@ namespace rviz_drone_control{
         void djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg);
         void boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg);
         
-    private:
-        QPushButton *takeoff_button_;
-        QLineEdit *mission_alt_edit_;
-        QPushButton *launch_button_;
-        QLineEdit *strike_id_edit_;
-        QPushButton *strike_button_;
-        QPushButton *strike_clean_button_;
-        QPushButton *track_button_;
-        QPushButton *follow_button_;
-        QLineEdit *return_home_edit_;
-        QPushButton *return_home_button_;
-        QPushButton *land_button_;
-        QHBoxLayout *layout_; // 布局对象作为成员变量
-        QGroupBox* group_box_; // 存储QGroupBox的指针 
-
+        Ui_Form _ui;
         ros::NodeHandle nh_;
+        BackgroundWorker* threads;
+
+        ros::Time time_start;
+        ros::Time time_now;
+
+        ros::Publisher mavros_manual_control_pub_;
+        ros::Subscriber mavros_state_sub_;
+        ros::Subscriber local_pos_sub;
+        ros::Subscriber body_velocity_sub;
+        ros::Publisher vec_pub;
+
+        mavros_msgs::State current_state;
+        std::string ai_ctrl_url;
+        std::string ai_gimbal_ctrl_url;
+
+        bool uav1_connected = false;
+        bool uav2_connected = false;
+
         ros::Publisher takeoff_pub_;
         ros::Publisher launch_pub_;
         ros::Publisher return_home_pub_;
@@ -209,12 +214,11 @@ namespace rviz_drone_control{
         std::string url_prefix;
         std::string url_suffix;
         int last_part_of_ip;
-        int port_0;
-        int port_1;
+        int ai_board_ctrl_port;
+        int ai_gimbal_ctrl_port;
         int port_2;
         double gimbal_pitch_;
 
-        ros::Subscriber mavros_state_sub_;
         ros::Subscriber mavros_home_sub_;
         ros::Subscriber mavros_gps_sub_;
         ros::Subscriber mavros_compass_sub_;
@@ -237,58 +241,11 @@ namespace rviz_drone_control{
         mavros_msgs::CommandLong command_;
         mavros_msgs::CommandBool arm_cmd;
         mavros_msgs::SetMode offb_set_mode;
-        std::string id_string;
+        std::string id_string;  // 直接通过ip 来指定
         sensor_msgs::NavSatFix dji_position;
 
         ros::Subscriber box_select_sub_;
 
-    };
-
-    class RVIZ_EXPORT RvizDroneControl :public rviz::Panel  {
-    Q_OBJECT
-    public:
-        RvizDroneControl(QWidget *parent = 0);
-        virtual void load(const rviz::Config &config);
-        virtual void save(rviz::Config config) const;
-        std::string uav_select_;
-        
-    protected Q_SLOTS:
-        void test_callback();
-        void test2_callback();
-        void start_callback();
-        void up_callback();
-        void turn_left_callback();
-        void turn_right_callback();
-        void down_callback();
-        void front_callback();
-        void left_callback();
-        void right_callback();
-        void back_callback();
-        void initManualControlPublisher();
-        void uavSelected_callback(int index); // 无人机选择框的槽函数
-        void manual_control_callback(const mavros_msgs::ManualControl::ConstPtr &msg); // 无人机选择框的槽函数
-        // void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
-    private:
-        ros::NodeHandle nh_;
-        QPushButton *test_button_;
-        QPushButton *test2_button_;
-        QPushButton *start_button_;
-
-        ros::Publisher test_pub_, test2_pub_;
-        ros::Publisher mavros_manual_control_pub_;
-        ros::Subscriber mavros_state_sub_;
-        ros::Subscriber manual_control_sub_;
-        ros::Subscriber local_pos_sub;
-        ros::Subscriber body_velocity_sub;
-        ros::Publisher vec_pub;
-
-        bool uav1_connected = false;
-        bool uav2_connected = false;
-
-        UavButton *uav0_buttons_;
-        UavButton *uav1_buttons_;
-        UavButton *uav2_buttons_;
-        QComboBox *uav_combo_box_; // 新增的无人机选择框
 
         int pitch_;
         int yaw_;
