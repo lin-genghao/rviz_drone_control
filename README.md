@@ -10,6 +10,12 @@ ubuntu 20.04 ros noetic
 
 apt install qtbase5-dev qt5-qmake qtbase5-dev-tools libqt5svg5-dev qtbase5-private-dev libeigen3-dev libgtest-dev libsdl-image1.2-dev libsdl1.2-dev ros-noetic-mavros* build-essential python3-catkin-tools ros-noetic-qt-*
 
+sudo apt-get install qtcreator
+sudo apt-get install qt4-default
+sudo apt-get install libfontconfig1 
+sudo apt-get install mesa-common-dev
+
+
 ```
 
 # 源码编译
