@@ -22,6 +22,31 @@ catkin build rviz_drone_control
 rospack plugins --attrib=plugin rviz
 ```
 
+# 界面设计 
+
+## PyQt5 及 pyqt5-tools 安装
+```
+pip install pyqt5
+pip install pyqt5-tools
+```
+## 查看版本
+pip show pyqt5
+
+安装图形界面Qt Designer
+sudo apt-get install qttools5-dev-tools
+sudo apt-get install qttools5-dev
+
+## 安装之后可执行文件designer在/usr/lib/x86_64-linux-gnu/qt5/bin/下
+### 打开 Qt Designer
+```
+/usr/lib/x86_64-linux-gnu/qt5/bin/designer 
+or
+designer
+```
+
+## 设计界面
+在Qt Designer交互界面获得.ui文件
+
 # 运行rviz_drone_control
 
 ```
