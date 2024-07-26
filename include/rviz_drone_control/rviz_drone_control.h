@@ -157,7 +157,7 @@ namespace rviz_drone_control{
         void djiPositionCallBack(const sensor_msgs::NavSatFix::ConstPtr &msg);
         void boxSelectCallback(const geometry_msgs::PoseArray::ConstPtr &msg);
         
-        Ui_Form _ui;
+        Ui_single_uav_ctrl_panel _ui;
         ros::NodeHandle nh_;
         BackgroundWorker* threads;
 
