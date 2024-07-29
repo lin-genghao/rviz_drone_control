@@ -1,7 +1,7 @@
 <library path="lib/librviz_drone_control">
-    <class name="rviz_drone_control/RvizDroneControl"
-           type="rviz_drone_control::RvizDroneControl"
-           base_class_type="rviz::Panel">
+    <class name="rviz_drone_control/drone"
+           type="rviz_drone_control::droneDisplay"
+           base_class_type="rviz::Display">
         <description>
             A panel widget is used to test rviz plugin.
         </description>
