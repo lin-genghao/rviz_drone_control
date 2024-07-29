@@ -125,9 +125,7 @@ namespace rviz_drone_control{
         virtual void save(rviz::Config config) const;
         
     protected Q_SLOTS:
-        void test_callback();
-        void test2_callback();
-        void start_callback();
+        // void start_callback();
         void uav_connect_callback();
         void turn_left_callback();
         void turn_right_callback();
@@ -141,7 +139,7 @@ namespace rviz_drone_control{
 
 
         void initManualControlPublisher();
-        void manual_control_callback(const mavros_msgs::ManualControl::ConstPtr &msg); // 无人机选择框的槽函数
+        // void manual_control_callback(const mavros_msgs::ManualControl::ConstPtr &msg); // 无人机选择框的槽函数
         // void mavrosStateCallback(const mavros_msgs::State::ConstPtr& msg);
     private:
         void CommunicationInit();
