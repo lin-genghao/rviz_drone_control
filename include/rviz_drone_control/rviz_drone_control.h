@@ -85,15 +85,21 @@
 #include "tf/transform_datatypes.h"
 #include "rviz_drone_control/httplib.h"
 #include <iostream>
+#include <chrono>
 #include <string>
+#include <iomanip>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 #include <QProcess>
 #include <QThread>
 #include <cstdlib> // 对于 std::stoi
+#include <fstream>
 
 #include "single_uav_ctrl_panel.h"
 
 #include "rviz_drone_control/background_thread.h"
+#include "rviz_drone_control/sub_process.h"
 
 namespace Ogre
 {
@@ -155,7 +161,13 @@ protected:
   Ui::single_uav_ctrl_panel single_uav_ctrl_panel_;
 
   BackgroundThread* background_thread_;
+  
+  SubProcess* mavros_process_;
 
+  std::ofstream logfile;
+
+  std::string log_path;
+  std::string log_file;
 private:
   void CommunicationInit();
   void send_reposition_command(double x, double y, double z, double yaw);
@@ -198,7 +210,8 @@ private:
 
   bool _uav_connected = false;
   std::string uav_select_;
-
+  std::string uav_ip_;
+  std::string uav_port_;
 
   ros::Publisher takeoff_pub_;
   ros::Publisher launch_pub_;

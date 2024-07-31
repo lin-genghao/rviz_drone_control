@@ -112,7 +112,9 @@ add_definitions(-DQT_NO_KEYWORDS)
 add_library(${PROJECT_NAME}
   src/rviz_drone_control.cpp 
   src/background_thread.cpp
+  src/sub_process.cpp
   include/rviz_drone_control/rviz_drone_control.h 
+  include/rviz_drone_control/sub_process.h 
   include/rviz_drone_control/background_thread.h 
   include/rviz_drone_control/httplib.h)
 add_dependencies(rviz_drone_control ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

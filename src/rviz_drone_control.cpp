@@ -41,6 +41,27 @@ void droneDisplay::onInitialize()
 #endif
   }
 
+    auto now = std::chrono::system_clock::now();
+    std::time_t now_time_t = std::chrono::system_clock::to_time_t(now);
+    std::tm* now_tm = std::localtime(&now_time_t);
+    char buffer[80];
+    std::strftime(buffer, sizeof(buffer), "%Y-%m-%d_%H-%M-%S", now_tm);
+    std::string folderName = "gcs_" + std::string(buffer);
+    log_path = "/home/lgh/mulit_uav_gcs/gcs_log/" + folderName;
+    log_file = log_path + "/start.log";
+
+    mkdir(log_path.c_str(), 0755);
+
+    logfile = std::ofstream(log_file);
+    if (logfile.is_open()) {
+        std::cout.rdbuf(logfile.rdbuf()); // 重定向 cout 到文件
+        std::cerr.rdbuf(logfile.rdbuf()); // 重定向 cerr 到文件
+    } else {
+        std::cerr << "Unable to open file for writing.\n";
+    }
+    std::cout << "log_path: " << log_path << std::endl;
+    std::cout << "log_file: " << log_file << std::endl;
+
   img_scene_node_ = img_scene_manager_->getRootSceneNode()->createChildSceneNode();
 
   {
@@ -120,6 +141,7 @@ droneDisplay::~droneDisplay()
     delete render_panel_;
     delete screen_rect_;
     removeAndDestroyChildNode(img_scene_node_->getParentSceneNode(), img_scene_node_);
+    logfile.close(); // 关闭文件
   }
 }
 
@@ -133,11 +155,11 @@ void droneDisplay::onEnable()
 
 void droneDisplay::onDisable()
 {
-  render_panel_->getRenderWindow()->setActive(false);
-  ImageDisplayBase::unsubscribe();
-  mouse_click_->disable();
-
-  reset();
+    render_panel_->getRenderWindow()->setActive(false);
+    ImageDisplayBase::unsubscribe();
+    mouse_click_->disable();
+    std::cout << "onDisable" << std::endl;
+    reset();
 }
 
 void droneDisplay::test2_updateTopic()
@@ -245,7 +267,31 @@ void droneDisplay::updateTopic()
 
 
 void droneDisplay::uav_connect_callback(){
-    ROS_INFO("------------->uav_connect_callback");
+  ROS_INFO("------------->uav_connect_callback");
+  if(_uav_connected){ //disconnect drone
+    disconnect(single_uav_ctrl_panel_.target_lock_button,SIGNAL(clicked()),this,SLOT(target_lock_callback()));
+    disconnect(single_uav_ctrl_panel_.drone_attack_button,SIGNAL(clicked()),this,SLOT(drone_attack_callback()));
+    disconnect(single_uav_ctrl_panel_.target_follow_button,SIGNAL(clicked()),this,SLOT(target_follow_callback()));
+    disconnect(single_uav_ctrl_panel_.target_stop_button,SIGNAL(clicked()),this,SLOT(target_stop_callback()));
+    disconnect(single_uav_ctrl_panel_.gimbal_up_button,SIGNAL(clicked()),this,SLOT(gimbal_up_callback()));
+    disconnect(single_uav_ctrl_panel_.gimbal_down_button,SIGNAL(clicked()),this,SLOT(gimbal_down_callback()));
+    disconnect(single_uav_ctrl_panel_.drone_yaw_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
+    disconnect(single_uav_ctrl_panel_.drone_yaw_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
+    _uav_connected = false;
+    single_uav_ctrl_panel_.current_uav_connect_button->setText("connect");
+
+    // std::string mavros_kill_commands = "/opt/ros/noetic/bin/rosnode kill /uav1/mavros";
+    // system("/opt/ros/noetic/bin/rosnode kill /uav1/mavros");
+    // mavros_process_->kill_process();
+    std::string env = "source /opt/ros/noetic/setup.bash && source /home/lgh/mulit_uav_gcs/devel/setup.bash && ";
+    std::string ros_kill_command = env + "rosnode kill " + uav_select_ + "/mavros && sleep 1";
+    std::string uav_kill_commands = ros_kill_command + " && ps aux | grep -e " + uav_select_ + " | grep -v grep | awk '{print $2}' | xargs kill -9 ";
+    std::cout << uav_kill_commands << std::endl;
+    mavros_process_ = new SubProcess(ros_kill_command);
+    mavros_process_->run();
+
+    std::cout << "disconnect drone ..."<< std::endl;
+  } else { // connect drone
     QString uav_ip = single_uav_ctrl_panel_.current_uav_text->toPlainText();
     auto part_vec = uav_ip.split(".");
     if(part_vec.count() != 4){
@@ -256,34 +302,37 @@ void droneDisplay::uav_connect_callback(){
     }
     auto last_num = part_vec.rbegin()->toStdString();
     auto last_bit = last_num.at(last_num.length() -1);
-    // std::cout << "last_num " << last_num << "last bit " << last_bit << std::endl;
+    uav_ip_ = uav_ip.toStdString();
+    int uav_port = 14500 + std::stoi(last_num);
+    uav_port_ = std::to_string(uav_port); 
+    std::cout << "last_num: " << last_num << "\tlast bit: " << last_bit << std::endl;
+    std::cout << "uav_ip_: " << uav_ip_ << "\tuav_port_: " << uav_port_ << std::endl;
     uav_select_ = "/uav";
     uav_select_ +=  last_bit;    // 不能直接等于"/uav" + last_bit https://blog.csdn.net/weixin_43336281/article/details/100588048
-    
     std::cout << "uav_select_ " << uav_select_ << std::endl;
-    _uav_connected = true;
-    if(_uav_connected){
-        connect(single_uav_ctrl_panel_.target_lock_button,SIGNAL(clicked()),this,SLOT(target_lock_callback()));
-        connect(single_uav_ctrl_panel_.drone_attack_button,SIGNAL(clicked()),this,SLOT(drone_attack_callback()));
-        connect(single_uav_ctrl_panel_.target_follow_button,SIGNAL(clicked()),this,SLOT(target_follow_callback()));
-        connect(single_uav_ctrl_panel_.target_stop_button,SIGNAL(clicked()),this,SLOT(target_stop_callback()));
-        connect(single_uav_ctrl_panel_.gimbal_up_button,SIGNAL(clicked()),this,SLOT(gimbal_up_callback()));
-        connect(single_uav_ctrl_panel_.gimbal_down_button,SIGNAL(clicked()),this,SLOT(gimbal_down_callback()));
-        connect(single_uav_ctrl_panel_.drone_yaw_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
-        connect(single_uav_ctrl_panel_.drone_yaw_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
-    } else {
-        disconnect(single_uav_ctrl_panel_.target_lock_button,SIGNAL(clicked()),this,SLOT(target_lock_callback()));
-        disconnect(single_uav_ctrl_panel_.drone_attack_button,SIGNAL(clicked()),this,SLOT(drone_attack_callback()));
-        disconnect(single_uav_ctrl_panel_.target_follow_button,SIGNAL(clicked()),this,SLOT(target_follow_callback()));
-        disconnect(single_uav_ctrl_panel_.target_stop_button,SIGNAL(clicked()),this,SLOT(target_stop_callback()));
-        disconnect(single_uav_ctrl_panel_.gimbal_up_button,SIGNAL(clicked()),this,SLOT(gimbal_up_callback()));
-        disconnect(single_uav_ctrl_panel_.gimbal_down_button,SIGNAL(clicked()),this,SLOT(gimbal_down_callback()));
-        disconnect(single_uav_ctrl_panel_.drone_yaw_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
-        disconnect(single_uav_ctrl_panel_.drone_yaw_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
-    }
-    
 
-    
+    std::string env = "source /opt/ros/noetic/setup.bash && source /home/lgh/mulit_uav_gcs/devel/setup.bash && ";
+    std::string fcu_url = "udp://:" +  uav_port_ + "@" + uav_ip_ + ":" + uav_port_;
+    std::string mavros_log = log_path +  uav_select_ + "_mavros.log";
+    std::cout << "mavros log : " << mavros_log << std::endl;
+    std::string mavros_commands = env + "roslaunch rviz_drone_control mavros.launch ns:=" + uav_select_ + " fcu_url:=" + fcu_url + " >> " + mavros_log + " 2>&1 &";
+    std::string commands = "/bin/bash -c '" + mavros_commands + "'";
+    std::cout << commands << std::endl;
+    mavros_process_ = new SubProcess(mavros_commands);
+    mavros_process_->run();
+
+    connect(single_uav_ctrl_panel_.target_lock_button,SIGNAL(clicked()),this,SLOT(target_lock_callback()));
+    connect(single_uav_ctrl_panel_.drone_attack_button,SIGNAL(clicked()),this,SLOT(drone_attack_callback()));
+    connect(single_uav_ctrl_panel_.target_follow_button,SIGNAL(clicked()),this,SLOT(target_follow_callback()));
+    connect(single_uav_ctrl_panel_.target_stop_button,SIGNAL(clicked()),this,SLOT(target_stop_callback()));
+    connect(single_uav_ctrl_panel_.gimbal_up_button,SIGNAL(clicked()),this,SLOT(gimbal_up_callback()));
+    connect(single_uav_ctrl_panel_.gimbal_down_button,SIGNAL(clicked()),this,SLOT(gimbal_down_callback()));
+    connect(single_uav_ctrl_panel_.drone_yaw_left_button,SIGNAL(clicked()),this,SLOT(turn_left_callback()));
+    connect(single_uav_ctrl_panel_.drone_yaw_right_button,SIGNAL(clicked()),this,SLOT(turn_right_callback()));
+    _uav_connected = true;
+    single_uav_ctrl_panel_.current_uav_connect_button->setText("disconnect");
+    std::cout << "connect drone ..."<< std::endl;
+  } 
 }
 
 void droneDisplay::turn_left_callback() {
@@ -292,7 +341,6 @@ void droneDisplay::turn_left_callback() {
     url = ai_gimbal_ctrl_url + "/api/rotation?degree=";
     yaw_=10;
     send_reposition_command(0, 0, 0, -5.0);
-
 }
 
 void droneDisplay::turn_right_callback() {
